@@ -16,7 +16,7 @@ const SearchBar = () => {
         />
         <input
           type="text"
-          placeholder="Search restaurants, cuisines, dishes..."
+          placeholder="Procurar restaurantes, mercados, cozinhas..."
           aria-label="Search for food"
           className="w-full h-13 pl-12 pr-4 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm font-medium shadow-card focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
