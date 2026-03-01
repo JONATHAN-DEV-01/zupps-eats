@@ -24,7 +24,7 @@ const Navbar = () => {
           {isHome && (
             <button className="hidden md:flex items-center gap-1.5 ml-4 px-3 py-1.5 rounded-full bg-muted text-sm font-medium text-foreground hover:bg-muted/80 transition-colors">
               <MapPin size={14} className="text-primary" />
-              <span>123 Main St</span>
+              <span>Localização</span>
               <ChevronDown size={14} className="text-muted-foreground" />
             </button>
           )}
