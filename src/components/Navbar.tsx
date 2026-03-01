@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingBag, User, MapPin, ChevronDown } from "lucide-react";
+import { User, MapPin, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 
 const Navbar = () => {
@@ -37,16 +37,6 @@ const Navbar = () => {
           >
             <User size={18} />
             <span className="hidden sm:inline">Sign In</span>
-          </Link>
-          <Link
-            to="/cart"
-            className="relative flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-          >
-            <ShoppingBag size={18} />
-            <span className="hidden sm:inline">Cart</span>
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-secondary text-secondary-foreground text-xs font-bold rounded-full flex items-center justify-center">
-              3
-            </span>
           </Link>
         </nav>
       </div>
