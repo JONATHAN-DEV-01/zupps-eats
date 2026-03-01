@@ -1,11 +1,8 @@
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, User, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
 
 const LoginPage = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
-
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left - Illustration */}
@@ -30,10 +27,10 @@ const LoginPage = () => {
             <span className="text-4xl font-extrabold">Z</span>
           </div>
           <h2 className="text-4xl font-extrabold mb-4 leading-tight">
-            Your favorite food,<br />delivered fast.
+            Sua comida favorita,<br />entregue rápido.
           </h2>
           <p className="text-lg opacity-80">
-            Join thousands of food lovers who trust Zupps for premium dining, right at their door.
+            Junte-se a milhares de amantes da gastronomia que confiam no Zupps para refeições premium, direto na sua porta.
           </p>
         </div>
       </div>
@@ -53,10 +50,10 @@ const LoginPage = () => {
           </Link>
 
           <h1 className="text-2xl font-extrabold text-foreground mb-2">
-            {isSignUp ? "Create your account" : "Welcome back"}
+            Crie sua conta
           </h1>
           <p className="text-muted-foreground text-sm mb-8">
-            {isSignUp ? "Start ordering your favorite meals" : "Sign in to continue ordering"}
+            Comece a pedir suas refeições favoritas
           </p>
 
           {/* Social Login */}
@@ -73,29 +70,27 @@ const LoginPage = () => {
 
           <div className="flex items-center gap-3 mb-8">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground font-medium">or continue with email</span>
+            <span className="text-xs text-muted-foreground font-medium">ou cadastre-se com email</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
           {/* Form */}
           <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-            {isSignUp && (
-              <div className="relative">
-                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Full name"
-                  aria-label="Full name"
-                  className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                />
-              </div>
-            )}
+            <div className="relative">
+              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Nome completo"
+                aria-label="Nome completo"
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
+            </div>
             <div className="relative">
               <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="email"
-                placeholder="Email address"
-                aria-label="Email address"
+                placeholder="Endereço de email"
+                aria-label="Endereço de email"
                 className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
             </div>
@@ -103,41 +98,23 @@ const LoginPage = () => {
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="password"
-                placeholder="Password"
-                aria-label="Password"
+                placeholder="Senha"
+                aria-label="Senha"
                 className="w-full h-12 pl-11 pr-11 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
-              <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Show password">
+              <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Mostrar senha">
                 <Eye size={16} />
               </button>
             </div>
-
-            {!isSignUp && (
-              <div className="flex justify-end">
-                <button type="button" className="text-xs font-medium text-primary hover:underline">
-                  Forgot password?
-                </button>
-              </div>
-            )}
 
             <button
               type="submit"
               className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
             >
-              {isSignUp ? "Create Account" : "Sign In"}
+              Criar Conta
               <ArrowRight size={16} />
             </button>
           </form>
-
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="font-semibold text-primary hover:underline"
-            >
-              {isSignUp ? "Sign In" : "Sign Up"}
-            </button>
-          </p>
         </motion.div>
       </div>
     </div>
