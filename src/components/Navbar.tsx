@@ -36,7 +36,7 @@ const Navbar = () => {
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
           >
             <User size={18} />
-            <span className="hidden sm:inline">Sign In</span>
+            <span className="hidden sm:inline">Entrar</span>
           </Link>
         </nav>
       </div>
