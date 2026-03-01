@@ -18,7 +18,7 @@ const Index = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl md:text-5xl font-extrabold text-foreground mb-2 leading-tight"
           >
-            Crave it. <span className="text-gradient">Tap it.</span><br />Get it.
+            Deseje. <span className="text-gradient">Toque.</span><br />Receba.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 15 }}
@@ -26,7 +26,7 @@ const Index = () => {
             transition={{ delay: 0.1 }}
             className="text-muted-foreground text-base md:text-lg mb-6 max-w-md"
           >
-            Premium food delivery from the best restaurants near you.
+            Entrega de comida premium dos melhores restaurantes perto de você.
           </motion.p>
           <SearchBar />
         </div>
