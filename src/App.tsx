@@ -4,9 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import RestaurantPage from "./pages/RestaurantPage";
-import CartPage from "./pages/CartPage";
-import LoginPage from "./pages/LoginPage";
+import EmailPage from "./pages/EmailPage";
+import AuthEmailPage from "./pages/AuthEmailPage";
+import TelefonePage from "./pages/TelefonePage";
+import AuthTelefonePage from "./pages/AuthTelefonePage";
+import CadastroPage from "./pages/CadastroPage";
+import EnderecoPage from "./pages/EnderecoPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,9 +22,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/restaurant/:id" element={<RestaurantPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/email" element={<EmailPage />} />
+          <Route path="/auth-email" element={<AuthEmailPage />} />
+          <Route path="/telefone" element={<TelefonePage />} />
+          <Route path="/auth-telefone" element={<AuthTelefonePage />} />
+          <Route path="/cadastro" element={<CadastroPage />} />
+          <Route path="/endereco" element={<EnderecoPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

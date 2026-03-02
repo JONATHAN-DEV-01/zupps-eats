@@ -1,8 +1,17 @@
 import { motion } from "framer-motion";
-import { Mail, Lock, Eye, User, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Mail, ArrowRight } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 
-const LoginPage = () => {
+const EmailPage = () => {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) navigate("/auth-email");
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left - Illustration */}
@@ -30,7 +39,7 @@ const LoginPage = () => {
             Sua comida favorita,<br />entregue rápido.
           </h2>
           <p className="text-lg opacity-80">
-            Junte-se a milhares de amantes da gastronomia que confiam no Zupps para refeições premium, direto na sua porta.
+            Junte-se a milhares de amantes da gastronomia que confiam no Zupps para refeições premium.
           </p>
         </div>
       </div>
@@ -50,51 +59,31 @@ const LoginPage = () => {
           </Link>
 
           <h1 className="text-2xl font-extrabold text-foreground mb-2">
-            Crie sua conta
+            Informe seu e-mail
           </h1>
           <p className="text-muted-foreground text-sm mb-8">
-            Comece a pedir suas refeições favoritas
+            Enviaremos um código de verificação
           </p>
 
-
-          {/* Form */}
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-            <div className="relative">
-              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Nome completo"
-                aria-label="Nome completo"
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-              />
-            </div>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="relative">
               <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="email"
-                placeholder="Endereço de email"
-                aria-label="Endereço de email"
+                placeholder="Endereço de e-mail"
+                aria-label="E-mail"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
-            </div>
-            <div className="relative">
-              <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="password"
-                placeholder="Senha"
-                aria-label="Senha"
-                className="w-full h-12 pl-11 pr-11 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-              />
-              <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" aria-label="Mostrar senha">
-                <Eye size={16} />
-              </button>
             </div>
 
             <button
               type="submit"
               className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
             >
-              Criar Conta
+              Avançar
               <ArrowRight size={16} />
             </button>
           </form>
@@ -104,4 +93,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default EmailPage;
