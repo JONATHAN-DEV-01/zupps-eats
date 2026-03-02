@@ -32,7 +32,7 @@ const Navbar = () => {
 
         <nav className="flex items-center gap-2">
           <Link
-            to="/login"
+            to="/email"
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
           >
             <User size={18} />
