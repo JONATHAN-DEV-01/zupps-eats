@@ -1,15 +1,68 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, ArrowRight } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/api";
 
 const AuthEmailPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code) navigate("/telefone");
+    if (!code) return;
+
+    const email = sessionStorage.getItem("register_email");
+    if (!email) {
+      toast({
+        title: "Erro",
+        description: "E-mail não encontrado. Volte para a tela inicial.",
+        variant: "destructive",
+      });
+      navigate("/email");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, codigo: code }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.proxima_etapa === "PHONE") {
+          navigate("/telefone");
+        } else if (data.proxima_etapa === "DATA") {
+          navigate("/cadastro");
+        } else if (data.proxima_etapa === "ADDRESS") {
+          navigate("/endereco");
+        } else {
+          // Já finalizou tudo, ou erro de fluxo
+          navigate("/");
+        }
+      } else {
+        toast({
+          title: "Erro",
+          description: data.message || data.error || "Código inválido.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -74,16 +127,24 @@ const AuthEmailPage = () => {
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all tracking-[0.3em] text-center"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all tracking-[0.3em] text-center disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70"
             >
-              Avançar
-              <ArrowRight size={16} />
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  Avançar
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </form>
         </motion.div>

@@ -1,17 +1,73 @@
 import { motion } from "framer-motion";
-import { User, CreditCard, ArrowRight } from "lucide-react";
+import { User, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/api";
 
 const CadastroPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [nome, setNome] = useState("");
   const [sobrenome, setSobrenome] = useState("");
   const [cpf, setCpf] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (nome && sobrenome) navigate("/endereco");
+    if (!nome || !sobrenome) return;
+
+    const userId = sessionStorage.getItem("register_usuario_id");
+    if (!userId) {
+      toast({
+        title: "Erro",
+        description: "Sessão expirada. Volte para o início.",
+        variant: "destructive",
+      });
+      navigate("/email");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const cleanCpf = cpf.replace(/\D/g, "");
+
+      const response = await fetch(`${API_BASE_URL}/auth/register/data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          nome,
+          sobrenome,
+          cpf: cleanCpf,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.next_step === "ADDRESS") {
+          navigate("/endereco");
+        } else {
+          // fallback
+          navigate("/endereco");
+        }
+      } else {
+        toast({
+          title: "Erro",
+          description: data.message || data.error || "Erro ao salvar dados pessoais.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,7 +131,8 @@ const CadastroPage = () => {
                 required
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -87,7 +144,8 @@ const CadastroPage = () => {
                 required
                 value={sobrenome}
                 onChange={(e) => setSobrenome(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -98,16 +156,24 @@ const CadastroPage = () => {
                 aria-label="CPF"
                 value={cpf}
                 onChange={(e) => setCpf(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70"
             >
-              Avançar
-              <ArrowRight size={16} />
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  Avançar
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </form>
         </motion.div>

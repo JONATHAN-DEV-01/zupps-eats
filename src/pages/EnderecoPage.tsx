@@ -1,20 +1,74 @@
 import { motion } from "framer-motion";
-import { MapPin, Home, Hash, Building, ArrowRight } from "lucide-react";
+import { MapPin, Home, Hash, Building, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/api";
 
 const EnderecoPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [cep, setCep] = useState("");
   const [rua, setRua] = useState("");
   const [bairro, setBairro] = useState("");
   const [numero, setNumero] = useState("");
   const [complemento, setComplemento] = useState("");
   const [semComplemento, setSemComplemento] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cep && rua && bairro && numero) navigate("/");
+    if (!cep || !rua || !bairro || !numero) return;
+
+    const userId = sessionStorage.getItem("register_usuario_id");
+    if (!userId) {
+      toast({
+        title: "Erro",
+        description: "Sessão expirada. Volte para o início.",
+        variant: "destructive",
+      });
+      navigate("/email");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const enderecoCompleto = `${rua}, ${numero} - ${bairro}, CEP: ${cep}${!semComplemento && complemento ? ' - ' + complemento : ''}`;
+
+      const response = await fetch(`${API_BASE_URL}/auth/register/address`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          endereco: enderecoCompleto,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Cadastro concluído",
+          description: "Bem-vindo ao Zupps!",
+        });
+        sessionStorage.clear();
+        navigate("/");
+      } else {
+        toast({
+          title: "Erro",
+          description: data.message || data.error || "Erro ao salvar endereço.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,7 +132,8 @@ const EnderecoPage = () => {
                 required
                 value={cep}
                 onChange={(e) => setCep(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -90,7 +145,8 @@ const EnderecoPage = () => {
                 required
                 value={rua}
                 onChange={(e) => setRua(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -102,7 +158,8 @@ const EnderecoPage = () => {
                 required
                 value={bairro}
                 onChange={(e) => setBairro(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -114,7 +171,8 @@ const EnderecoPage = () => {
                 required
                 value={numero}
                 onChange={(e) => setNumero(e.target.value)}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
               />
             </div>
 
@@ -126,18 +184,18 @@ const EnderecoPage = () => {
                   type="text"
                   placeholder="Complemento"
                   aria-label="Complemento"
-                  disabled={semComplemento}
+                  disabled={semComplemento || loading}
                   value={semComplemento ? "" : complemento}
                   onChange={(e) => setComplemento(e.target.value)}
-                  className={`w-full h-12 pl-11 pr-4 rounded-xl border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${
-                    semComplemento ? "bg-muted cursor-not-allowed opacity-60" : "bg-card"
-                  }`}
+                  className={`w-full h-12 pl-11 pr-4 rounded-xl border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${semComplemento || loading ? "bg-muted cursor-not-allowed opacity-60" : "bg-card"
+                    }`}
                 />
               </div>
-              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
                 <input
                   type="checkbox"
                   checked={semComplemento}
+                  disabled={loading}
                   onChange={(e) => {
                     setSemComplemento(e.target.checked);
                     if (e.target.checked) setComplemento("");
@@ -150,10 +208,17 @@ const EnderecoPage = () => {
 
             <button
               type="submit"
-              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70"
             >
-              Finalizar
-              <ArrowRight size={16} />
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  Finalizar
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </form>
         </motion.div>

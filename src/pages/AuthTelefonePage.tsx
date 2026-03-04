@@ -1,15 +1,65 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, ArrowRight } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/api";
 
 const AuthTelefonePage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code) navigate("/cadastro");
+    if (!code) return;
+
+    const telefone = sessionStorage.getItem("register_telefone");
+    if (!telefone) {
+      toast({
+        title: "Erro",
+        description: "Telefone não encontrado. Volte para a tela anterior.",
+        variant: "destructive",
+      });
+      navigate("/telefone");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefone, codigo: code }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.proxima_etapa === "DATA") {
+          navigate("/cadastro");
+        } else if (data.proxima_etapa === "ADDRESS") {
+          navigate("/endereco");
+        } else {
+          navigate("/cadastro"); // fallback para os dados pessoais
+        }
+      } else {
+        toast({
+          title: "Erro",
+          description: data.message || data.error || "Código inválido.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro de conexão",
+        description: "Não foi possível conectar ao servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,7 +88,7 @@ const AuthTelefonePage = () => {
             Verifique seu telefone
           </h2>
           <p className="text-lg opacity-80">
-            Enviamos um código SMS para o seu número.
+            Enviamos um código SMS/WhatsApp para o seu número.
           </p>
         </div>
       </div>
@@ -60,7 +110,7 @@ const AuthTelefonePage = () => {
             Código SMS
           </h1>
           <p className="text-muted-foreground text-sm mb-8">
-            Digite o código enviado por SMS
+            Digite o código enviado
           </p>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -74,16 +124,24 @@ const AuthTelefonePage = () => {
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all tracking-[0.3em] text-center"
+                disabled={loading}
+                className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all tracking-[0.3em] text-center disabled:opacity-50"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70"
             >
-              Avançar
-              <ArrowRight size={16} />
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  Avançar
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </form>
         </motion.div>
