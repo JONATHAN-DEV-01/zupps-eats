@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { User, MapPin, ChevronDown } from "lucide-react";
+import { MapPin, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 
 const Navbar = () => {
   const location = useLocation();
-  const isHome = location.pathname === "/";
+  const isHome = location.pathname === "/home" || location.pathname === "/";
 
   return (
     <motion.header
@@ -14,7 +14,7 @@ const Navbar = () => {
     >
       <div className="container flex items-center justify-between h-16">
         <div className="flex items-center gap-4">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/home" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-extrabold text-lg">Z</span>
             </div>
@@ -29,16 +29,6 @@ const Navbar = () => {
             </button>
           )}
         </div>
-
-        <nav className="flex items-center gap-2">
-          <Link
-            to="/email"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-          >
-            <User size={18} />
-            <span className="hidden sm:inline">Entrar</span>
-          </Link>
-        </nav>
       </div>
     </motion.header>
   );

@@ -1,6 +1,8 @@
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Store, User } from "lucide-react";
 import heroImage from "@/assets/hero-food.jpg";
 
 const Index = () => {
@@ -30,6 +32,31 @@ const Index = () => {
           </motion.p>
           <SearchBar />
         </div>
+      </section>
+
+      {/* CTA Buttons */}
+      <section className="container py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col sm:flex-row gap-4 max-w-lg"
+        >
+          <Link
+            to="/login-restaurante"
+            className="flex-1 flex items-center justify-center gap-3 h-14 rounded-xl bg-card border border-border text-foreground font-bold text-sm hover:bg-muted hover:border-primary/30 transition-all shadow-card"
+          >
+            <Store size={20} className="text-primary" />
+            Sou Restaurante
+          </Link>
+          <Link
+            to="/login-cliente"
+            className="flex-1 flex items-center justify-center gap-3 h-14 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity"
+          >
+            <User size={20} />
+            Sou Cliente
+          </Link>
+        </motion.div>
       </section>
     </div>
   );
