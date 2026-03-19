@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { MapPin, ChevronDown } from "lucide-react";
+import { MapPin, ChevronDown, Store, User } from "lucide-react";
 import { motion } from "framer-motion";
 
 const Navbar = () => {
