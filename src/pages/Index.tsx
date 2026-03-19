@@ -2,7 +2,6 @@ import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import { motion } from "framer-motion";
 import heroImage from "@/assets/hero-food.jpg";
-import heroImage from "@/assets/hero-food.jpg";
 
 const Index = () => {
   return (
