@@ -12,13 +12,13 @@ const AuthLayout = ({ backgroundImage, panelTitle, panelSubtitle, children }: Au
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left - Food Image Panel */}
-      <div className="hidden lg:flex w-1/2 relative items-center justify-center overflow-hidden">
+      <div className="hidden lg:flex w-1/2 relative items-center justify-center overflow-hidden bg-zinc-900">
         <img
           src={backgroundImage}
           alt="Food"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-foreground/40" />
+        <div className="absolute inset-0 bg-black/50" />
         <div className="relative z-10 text-primary-foreground text-center max-w-md px-8">
           <div className="w-20 h-20 rounded-2xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-8">
             <span className="text-4xl font-extrabold">Z</span>
