@@ -1,8 +1,7 @@
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { Store, User } from "lucide-react";
+import heroImage from "@/assets/hero-food.jpg";
 import heroImage from "@/assets/hero-food.jpg";
 
 const Index = () => {
