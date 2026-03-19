@@ -2,7 +2,7 @@ import { User, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { fetchApi } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-cadastro.jpg";
 
@@ -28,9 +28,8 @@ const CadastroPage = () => {
     setLoading(true);
     try {
       const cleanCpf = cpf.replace(/\D/g, "");
-      const response = await fetch(`${API_BASE_URL}/auth/register/data`, {
+      const response = await fetchApi("/auth/register/data", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, nome, sobrenome, cpf: cleanCpf }),
       });
 
@@ -42,7 +41,7 @@ const CadastroPage = () => {
         toast({ title: "Erro", description: data.message || data.error || "Erro ao salvar dados pessoais.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor.", variant: "destructive" });
+      toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor. Verifique se o backend está rodando na porta 5000.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

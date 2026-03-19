@@ -18,6 +18,9 @@ import CadastroDadosRestaurantePage from "./pages/CadastroDadosRestaurantePage";
 import CadastroLogoRestaurantePage from "./pages/CadastroLogoRestaurantePage";
 import CadastroHorarioRestaurantePage from "./pages/CadastroHorarioRestaurantePage";
 import GerenciaRestaurantePage from "./pages/GerenciaRestaurantePage";
+import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
+import CriarProdutoPage from "./pages/CriarProdutoPage";
+import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +47,7 @@ const App = () => (
           {/* Customer Login */}
           <Route path="/login-cliente" element={<LoginClientePage />} />
           <Route path="/auth-login-cliente" element={<AuthLoginClientePage />} />
+          <Route path="/auth-login-cliente/:token" element={<AuthLoginClientePage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />
@@ -56,6 +60,10 @@ const App = () => (
 
           {/* Restaurant Management */}
           <Route path="/gerencia-restaurante" element={<GerenciaRestaurantePage />} />
+          <Route path="/gerencia-cardapio" element={<GerenciaCardapioPage />} />
+          <Route path="/criar-produto" element={<CriarProdutoPage />} />
+          <Route path="/editar-produto/:id" element={<CriarProdutoPage />} />
+          <Route path="/adicionais-produto/:id" element={<AdicionaisProdutoPage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

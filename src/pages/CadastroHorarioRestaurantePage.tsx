@@ -41,17 +41,24 @@ const CadastroHorarioRestaurantePage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const restaurantId = sessionStorage.getItem("restaurant_id");
+    if (!restaurantId) {
+      toast({ title: "Erro", description: "ID do restaurante não encontrado.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
     try {
-      const restaurantId = sessionStorage.getItem("restaurant_id");
-      const response = await fetch(`${API_BASE_URL}/auth/restaurant/schedule`, {
+      const response = await fetchApi(`/restaurantes/${restaurantId}/horarios`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          restaurant_id: restaurantId,
-          horarios: schedule,
-          ativo: active,
-        }),
+        body: JSON.stringify(
+          Object.entries(schedule).map(([day, times]) => ({
+            dia_semana: DAYS.find(d => d.key === day)?.key === "dom" ? 0 : DAYS.findIndex(d => d.key === day) + 1,
+            abertura: times.open,
+            fechamento: times.close,
+            fechado: times.closed
+          }))
+        ),
       });
       const data = await response.json();
       if (response.ok) {

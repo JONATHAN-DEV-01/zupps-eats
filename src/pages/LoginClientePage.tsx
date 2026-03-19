@@ -17,9 +17,8 @@ const LoginClientePage = () => {
     if (!email) return;
     setLoading("email");
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login/email`, {
+      const response = await fetchApi("/auth/request-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       const data = await response.json();
@@ -42,9 +41,8 @@ const LoginClientePage = () => {
     setLoading("sms");
     try {
       const cleanTelefone = telefone.replace(/\D/g, "");
-      const response = await fetch(`${API_BASE_URL}/auth/login/sms`, {
+      const response = await fetchApi("/auth/request-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ telefone: cleanTelefone }),
       });
       const data = await response.json();

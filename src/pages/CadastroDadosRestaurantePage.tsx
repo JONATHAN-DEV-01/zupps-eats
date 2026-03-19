@@ -36,33 +36,19 @@ const CadastroDadosRestaurantePage = () => {
     e.preventDefault();
     if (!nomeFantasia || !razaoSocial || !cnpj || !endereco || !telefone || !categoria) return;
 
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/restaurant/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome_fantasia: nomeFantasia,
-          razao_social: razaoSocial,
-          cnpj: cnpj.replace(/\D/g, ""),
-          endereco,
-          telefone: telefone.replace(/\D/g, ""),
-          descricao,
-          categoria,
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        sessionStorage.setItem("restaurant_id", data.restaurant_id || "");
-        navigate("/cadastro-logo-restaurante");
-      } else {
-        toast({ title: "Erro", description: data.message || data.error || "Erro ao cadastrar restaurante.", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    // Save to session storage to be sent in the final step with the logo
+    const restaurantData = {
+      nome_fantasia: nomeFantasia,
+      razao_social: razaoSocial,
+      cnpj: cnpj.replace(/\D/g, ""),
+      endereco,
+      telefone: telefone.replace(/\D/g, ""),
+      descricao,
+      categoria,
+    };
+    
+    sessionStorage.setItem("pending_restaurant_data", JSON.stringify(restaurantData));
+    navigate("/cadastro-logo-restaurante");
   };
 
   const inputClass = "w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50";

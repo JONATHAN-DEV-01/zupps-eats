@@ -1,16 +1,49 @@
 import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { fetchApi, setAuthToken, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-login-cliente.jpg";
 
 const AuthLoginClientePage = () => {
   const navigate = useNavigate();
+  const { token: urlToken } = useParams();
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const verifyLink = async () => {
+      if (urlToken) {
+        setLoading(true);
+        try {
+          const response = await fetchApi(`/auth/verify-link/${urlToken}`);
+          const data = await response.json();
+          if (response.ok) {
+            handleLoginSuccess(data);
+          } else {
+            toast({ title: "Erro", description: "Link de acesso inválido ou expirado.", variant: "destructive" });
+          }
+        } catch {
+          toast({ title: "Erro", description: "Falha na verificação do link.", variant: "destructive" });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    verifyLink();
+  }, [urlToken]);
+
+  const handleLoginSuccess = (data: any) => {
+    if (data.token) setAuthToken(data.token);
+    if (data.user) setUserProfile(data.user);
+    toast({ title: "Login realizado", description: `Bem-vindo, ${data.user?.nome || "usuário"}!` });
+    
+    // Redirect based on profile
+    if (data.user?.perfil === "RESTAURANTE") navigate("/gerencia-restaurante");
+    else navigate("/home");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,9 +65,8 @@ const AuthLoginClientePage = () => {
         ? { email, codigo: code }
         : { telefone, codigo: code };
 
-      const response = await fetch(`${API_BASE_URL}/auth/login/verify`, {
+      const response = await fetchApi("/auth/login/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
@@ -44,8 +76,7 @@ const AuthLoginClientePage = () => {
         sessionStorage.removeItem("login_method");
         sessionStorage.removeItem("login_email");
         sessionStorage.removeItem("login_telefone");
-        if (data.token) sessionStorage.setItem("auth_token", data.token);
-        navigate("/home");
+        handleLoginSuccess(data);
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Código inválido.", variant: "destructive" });
       }

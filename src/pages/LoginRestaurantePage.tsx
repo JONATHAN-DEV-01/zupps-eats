@@ -18,9 +18,8 @@ const LoginRestaurantePage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/restaurant/login`, {
+      const response = await fetchApi("/auth/request-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       const data = await response.json();

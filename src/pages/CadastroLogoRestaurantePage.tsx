@@ -37,24 +37,48 @@ const CadastroLogoRestaurantePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!logo) {
+      toast({ title: "Logo obrigatório", description: "Por favor, selecione um logotipo para o seu restaurante.", variant: "destructive" });
+      return;
+    }
+
+    const pendingData = sessionStorage.getItem("pending_restaurant_data");
+    if (!pendingData) {
+      toast({ title: "Erro", description: "Dados do restaurante não encontrados. Reinicie o cadastro.", variant: "destructive" });
+      navigate("/cadastro-dados-restaurante");
+      return;
+    }
+
+    const restaurantData = JSON.parse(pendingData);
+    const userProfile = localStorage.getItem("user_profile");
+    const userId = userProfile ? JSON.parse(userProfile).id : null;
 
     setLoading(true);
     try {
-      const restaurantId = sessionStorage.getItem("restaurant_id");
       const formData = new FormData();
-      if (restaurantId) formData.append("restaurant_id", restaurantId);
-      if (cover) formData.append("cover", cover);
-      if (logo) formData.append("logo", logo);
+      formData.append("nome_fantasia", restaurantData.nome_fantasia);
+      formData.append("razao_social", restaurantData.razao_social);
+      formData.append("cnpj", restaurantData.cnpj);
+      formData.append("endereco", restaurantData.endereco);
+      formData.append("telefone", restaurantData.telefone);
+      formData.append("descricao", restaurantData.descricao);
+      formData.append("categoria_id", restaurantData.categoria); // Using name as ID for now or map to ID
+      formData.append("usuario_id", userId);
+      formData.append("logotipo", logo);
+      if (cover) formData.append("capa", cover);
 
-      const response = await fetch(`${API_BASE_URL}/auth/restaurant/images`, {
+      const response = await fetchApi("/restaurantes", {
         method: "POST",
         body: formData,
       });
+
       const data = await response.json();
       if (response.ok) {
+        sessionStorage.setItem("restaurant_id", data.id || data.restaurante_id);
+        sessionStorage.removeItem("pending_restaurant_data");
         navigate("/cadastro-horario-restaurante");
       } else {
-        toast({ title: "Erro", description: data.message || data.error || "Erro ao enviar imagens.", variant: "destructive" });
+        toast({ title: "Erro", description: data.message || data.error || "Erro ao cadastrar restaurante.", variant: "destructive" });
       }
     } catch {
       toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor.", variant: "destructive" });

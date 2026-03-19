@@ -2,24 +2,45 @@ import { MapPin, Home, Hash, Building, ArrowRight, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { fetchApi } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
+import LocationPicker from "@/components/LocationPicker";
 import foodImage from "@/assets/food-endereco.jpg";
 
 const EnderecoPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [cep, setCep] = useState("");
-  const [rua, setRua] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [numero, setNumero] = useState("");
-  const [complemento, setComplemento] = useState("");
-  const [semComplemento, setSemComplemento] = useState(false);
+  const [address, setAddress] = useState({
+    logradouro: "",
+    bairro: "",
+    cidade: "São Paulo", // Default per guide info
+    estado: "SP",
+    numero: "",
+    cep: "",
+    sem_numero: false,
+    complemento: "",
+    ponto_referencia: "",
+  });
   const [loading, setLoading] = useState(false);
+
+  const handleLocationSelect = (loc: any) => {
+    setAddress(prev => ({
+      ...prev,
+      logradouro: loc.logradouro || prev.logradouro,
+      bairro: loc.bairro || prev.bairro,
+      cidade: loc.cidade || prev.cidade,
+      estado: loc.estado || prev.estado,
+      numero: loc.numero || prev.numero,
+      cep: loc.cep || prev.cep,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cep || !rua || !bairro || !numero) return;
+    if (!address.logradouro || !address.bairro || (!address.numero && !address.sem_numero)) {
+      toast({ title: "Erro", description: "Preencha os campos obrigatórios.", variant: "destructive" });
+      return;
+    }
 
     const userId = sessionStorage.getItem("register_usuario_id");
     if (!userId) {
@@ -30,11 +51,12 @@ const EnderecoPage = () => {
 
     setLoading(true);
     try {
-      const enderecoCompleto = `${rua}, ${numero} - ${bairro}, CEP: ${cep}${!semComplemento && complemento ? ' - ' + complemento : ''}`;
-      const response = await fetch(`${API_BASE_URL}/auth/register/address`, {
+      const response = await fetchApi("/auth/register/address", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, endereco: enderecoCompleto }),
+        body: JSON.stringify({
+          user_id: userId,
+          ...address,
+        }),
       });
 
       const data = await response.json();
@@ -42,6 +64,10 @@ const EnderecoPage = () => {
       if (response.ok) {
         toast({ title: "Cadastro concluído", description: "Bem-vindo ao Zupps!" });
         sessionStorage.clear();
+        if (data.token) {
+          localStorage.setItem("auth_token", data.token);
+          localStorage.setItem("user_profile", JSON.stringify(data.user));
+        }
         navigate("/home");
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Erro ao salvar endereço.", variant: "destructive" });
@@ -60,49 +86,97 @@ const EnderecoPage = () => {
       panelSubtitle="Informe seu endereço para encontrarmos os melhores restaurantes perto de você."
     >
       <h1 className="text-2xl font-extrabold text-foreground mb-2">Seu endereço</h1>
-      <p className="text-muted-foreground text-sm mb-8">Última etapa! Informe seu endereço de entrega</p>
+      <p className="text-muted-foreground text-sm mb-6">Última etapa! Informe seu endereço de entrega</p>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <div className="relative">
-          <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="CEP *" aria-label="CEP" required value={cep} onChange={(e) => setCep(e.target.value)} disabled={loading} className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50" />
-        </div>
-        <div className="relative">
-          <Home size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Nome da Rua *" aria-label="Nome da Rua" required value={rua} onChange={(e) => setRua(e.target.value)} disabled={loading} className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50" />
-        </div>
-        <div className="relative">
-          <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Bairro *" aria-label="Bairro" required value={bairro} onChange={(e) => setBairro(e.target.value)} disabled={loading} className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50" />
-        </div>
-        <div className="relative">
-          <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Número *" aria-label="Número" required value={numero} onChange={(e) => setNumero(e.target.value)} disabled={loading} className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50" />
-        </div>
+        <LocationPicker onLocationSelect={handleLocationSelect} />
 
-        <div>
+        <div className="grid grid-cols-2 gap-4">
           <div className="relative">
-            <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Complemento"
-              aria-label="Complemento"
-              disabled={semComplemento || loading}
-              value={semComplemento ? "" : complemento}
-              onChange={(e) => setComplemento(e.target.value)}
-              className={`w-full h-12 pl-11 pr-4 rounded-xl border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${semComplemento || loading ? "bg-muted cursor-not-allowed opacity-60" : "bg-card"}`}
+            <Home size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Rua *" 
+              required 
+              value={address.logradouro} 
+              onChange={(e) => setAddress({...address, logradouro: e.target.value})} 
+              disabled={loading} 
+              className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium" 
             />
           </div>
-          <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
-            <input
-              type="checkbox"
-              checked={semComplemento}
-              disabled={loading}
-              onChange={(e) => { setSemComplemento(e.target.checked); if (e.target.checked) setComplemento(""); }}
-              className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30 accent-primary"
+          <div className="relative">
+            <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Bairro *" 
+              required 
+              value={address.bairro} 
+              onChange={(e) => setAddress({...address, bairro: e.target.value})} 
+              disabled={loading} 
+              className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium" 
             />
-            <span className="text-sm text-muted-foreground">Não há complemento</span>
-          </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="relative">
+            <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Número *" 
+              required={!address.sem_numero} 
+              disabled={address.sem_numero || loading} 
+              value={address.numero} 
+              onChange={(e) => setAddress({...address, numero: e.target.value})} 
+              className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium" 
+            />
+          </div>
+          <div className="relative">
+            <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="CEP *" 
+              required 
+              value={address.cep} 
+              onChange={(e) => setAddress({...address, cep: e.target.value})} 
+              disabled={loading} 
+              className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium" 
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 px-2">
+          <input 
+            type="checkbox" 
+            id="sem_numero" 
+            checked={address.sem_numero} 
+            onChange={(e) => setAddress({...address, sem_numero: e.target.checked, numero: e.target.checked ? "" : address.numero})} 
+          />
+          <label htmlFor="sem_numero" className="text-sm text-muted-foreground cursor-pointer">Sem número</label>
+        </div>
+
+        <div className="relative">
+          <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input 
+            type="text" 
+            placeholder="Complemento" 
+            value={address.complemento} 
+            onChange={(e) => setAddress({...address, complemento: e.target.value})} 
+            disabled={loading} 
+            className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium" 
+          />
+        </div>
+
+        <div className="relative">
+          <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input 
+            type="text" 
+            placeholder="Ponto de referência" 
+            value={address.ponto_referencia} 
+            onChange={(e) => setAddress({...address, ponto_referencia: e.target.value})} 
+            disabled={loading} 
+            className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium" 
+          />
         </div>
 
         <button type="submit" disabled={loading} className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70">

@@ -2,7 +2,7 @@ import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { fetchApi } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-auth-email.jpg";
 
@@ -25,9 +25,8 @@ const AuthEmailPage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      const response = await fetchApi("/auth/verify-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, codigo: code }),
       });
 
@@ -42,7 +41,7 @@ const AuthEmailPage = () => {
         toast({ title: "Erro", description: data.message || data.error || "Código inválido.", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor.", variant: "destructive" });
+      toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor. Verifique se o backend está rodando na porta 5000.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
