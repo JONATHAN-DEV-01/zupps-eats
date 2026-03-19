@@ -29,6 +29,19 @@ const Navbar = () => {
             </button>
           )}
         </div>
+
+        {isHome && (
+          <div className="flex items-center gap-3">
+            <Link to="/login-restaurante" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border text-foreground font-semibold text-sm hover:bg-muted transition-colors">
+              <Store size={16} className="text-primary" />
+              Sou Restaurante
+            </Link>
+            <Link to="/login-cliente" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
+              <User size={16} />
+              Sou Cliente
+            </Link>
+          </div>
+        )}
       </div>
     </motion.header>
   );
