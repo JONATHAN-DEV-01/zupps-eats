@@ -1,4 +1,4 @@
-import { Building, CreditCard, MapPin, Phone, FileText, UtensilsCrossed, ArrowRight, Loader2 } from "lucide-react";
+import { Building, CreditCard, MapPin, Phone, FileText, UtensilsCrossed, ArrowRight, Loader2, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,8 @@ const categorias = [
 const CadastroDadosRestaurantePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [email, setEmail] = useState("");
   const [nomeFantasia, setNomeFantasia] = useState("");
   const [razaoSocial, setRazaoSocial] = useState("");
   const [cnpj, setCnpj] = useState("");
@@ -34,10 +36,11 @@ const CadastroDadosRestaurantePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nomeFantasia || !razaoSocial || !cnpj || !endereco || !telefone || !categoria) return;
+    if (!email || !nomeFantasia || !razaoSocial || !cnpj || !endereco || !telefone || !categoria) return;
 
     // Save to session storage to be sent in the final step with the logo
     const restaurantData = {
+      email,
       nome_fantasia: nomeFantasia,
       razao_social: razaoSocial,
       cnpj: cnpj.replace(/\D/g, ""),
@@ -63,6 +66,10 @@ const CadastroDadosRestaurantePage = () => {
       <p className="text-muted-foreground text-sm mb-6">Preencha as informações do seu estabelecimento</p>
 
       <form className="space-y-3" onSubmit={handleSubmit}>
+        <div className="relative">
+          <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input type="email" placeholder="E-mail do Restaurante *" aria-label="E-mail" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} className={inputClass} />
+        </div>
         <div className="relative">
           <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input type="text" placeholder="Nome Fantasia *" aria-label="Nome Fantasia" required value={nomeFantasia} onChange={(e) => setNomeFantasia(e.target.value)} disabled={loading} className={inputClass} />

@@ -2,12 +2,12 @@ import { ImageIcon, ArrowRight, Loader2, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetchApi } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-cadastro-restaurante.jpg";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+
 
 const CadastroLogoRestaurantePage = () => {
   const navigate = useNavigate();
@@ -26,10 +26,7 @@ const CadastroLogoRestaurantePage = () => {
       toast({ title: "Formato inválido", description: "Aceita apenas JPG, JPEG, PNG ou WEBP.", variant: "destructive" });
       return;
     }
-    if (file.size > MAX_SIZE) {
-      toast({ title: "Arquivo muito grande", description: "Tamanho máximo: 2MB.", variant: "destructive" });
-      return;
-    }
+
     const url = URL.createObjectURL(file);
     if (type === "cover") { setCover(file); setCoverPreview(url); }
     else { setLogo(file); setLogoPreview(url); }
@@ -50,8 +47,7 @@ const CadastroLogoRestaurantePage = () => {
     }
 
     const restaurantData = JSON.parse(pendingData);
-    const userProfile = localStorage.getItem("user_profile");
-    const userId = userProfile ? JSON.parse(userProfile).id : null;
+
 
     setLoading(true);
     try {
@@ -63,7 +59,7 @@ const CadastroLogoRestaurantePage = () => {
       formData.append("telefone", restaurantData.telefone);
       formData.append("descricao", restaurantData.descricao);
       formData.append("categoria_id", restaurantData.categoria); // Using name as ID for now or map to ID
-      formData.append("usuario_id", userId);
+      formData.append("email", restaurantData.email);
       formData.append("logotipo", logo);
       if (cover) formData.append("capa", cover);
 
@@ -98,7 +94,7 @@ const CadastroLogoRestaurantePage = () => {
         <>
           <Upload size={24} className="text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
-          <span className="text-xs text-muted-foreground/60">JPG, JPEG, PNG ou WEBP. Máx 2MB</span>
+          <span className="text-xs text-muted-foreground/60">JPG, JPEG, PNG ou WEBP</span>
         </>
       )}
       <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={(e) => onFile(e.target.files?.[0] || null)} />

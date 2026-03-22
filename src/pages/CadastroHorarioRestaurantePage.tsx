@@ -2,7 +2,7 @@ import { Clock, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { fetchApi } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import { Switch } from "@/components/ui/switch";
 import foodImage from "@/assets/food-horario-restaurante.jpg";

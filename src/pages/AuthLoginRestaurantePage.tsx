@@ -25,7 +25,7 @@ const AuthLoginRestaurantePage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/restaurant/verify`, {
+      const response = await fetch(`${API_BASE_URL}/auth/restaurant/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, codigo: code }),
