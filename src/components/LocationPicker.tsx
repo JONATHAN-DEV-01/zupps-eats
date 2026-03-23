@@ -13,6 +13,8 @@ const center = {
   lng: -46.6333,
 };
 
+const LIBRARIES: ("places")[] = ['places'];
+
 interface LocationPickerProps {
   onLocationSelect: (address: {
     logradouro: string;
@@ -28,7 +30,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places'],
+    libraries: LIBRARIES,
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);

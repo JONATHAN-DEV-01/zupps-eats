@@ -2,7 +2,7 @@ import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, setAuthToken, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-login-restaurante.jpg";
 
@@ -33,7 +33,14 @@ const AuthLoginRestaurantePage = () => {
       const data = await response.json();
       if (response.ok) {
         sessionStorage.removeItem("restaurant_login_email");
-        if (data.token) sessionStorage.setItem("auth_token", data.token);
+        if (data.token) setAuthToken(data.token);
+        
+        const userData = data.restaurante || data.user;
+        if (userData) {
+          setUserProfile(userData);
+        }
+        
+        toast({ title: "Login realizado", description: `Bem-vindo, ${userData?.nome_fantasia || userData?.nome || "Restaurante"}!` });
         navigate("/gerencia-restaurante");
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Código inválido.", variant: "destructive" });
