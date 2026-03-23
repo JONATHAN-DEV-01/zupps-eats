@@ -43,7 +43,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
     setMap(null);
   }, []);
 
-  const onAutocompleteLoad = (autocompleteInstance: google.maps.libraries.places.Autocomplete) => {
+  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
     setAutocomplete(autocompleteInstance);
   };
 
