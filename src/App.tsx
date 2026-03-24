@@ -21,6 +21,7 @@ import GerenciaRestaurantePage from "./pages/GerenciaRestaurantePage";
 import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
 import CriarProdutoPage from "./pages/CriarProdutoPage";
 import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
+import ClienteHomePage from "./pages/ClienteHomePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
