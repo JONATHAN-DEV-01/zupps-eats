@@ -21,6 +21,7 @@ import GerenciaRestaurantePage from "./pages/GerenciaRestaurantePage";
 import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
 import CriarProdutoPage from "./pages/CriarProdutoPage";
 import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
+import ClienteHomePage from "./pages/ClienteHomePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,10 +45,11 @@ const App = () => (
           <Route path="/cadastro-cliente" element={<CadastroPage />} />
           <Route path="/cadastro-endereco-cliente" element={<EnderecoPage />} />
 
-          {/* Customer Login */}
+          {/* Customer Login & Dashboard */}
           <Route path="/login-cliente" element={<LoginClientePage />} />
           <Route path="/auth-login-cliente" element={<AuthLoginClientePage />} />
           <Route path="/auth-login-cliente/:token" element={<AuthLoginClientePage />} />
+          <Route path="/cliente-home" element={<ClienteHomePage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />
