@@ -42,7 +42,7 @@ const AuthLoginClientePage = () => {
     
     // Redirect based on profile
     if (data.user?.perfil === "RESTAURANTE") navigate("/gerencia-restaurante");
-    else navigate("/home");
+    else navigate("/cliente-home");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
