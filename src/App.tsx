@@ -60,7 +60,8 @@ const App = () => (
           <Route path="/cadastro-logo-restaurante" element={<CadastroLogoRestaurantePage />} />
           <Route path="/cadastro-horario-restaurante" element={<CadastroHorarioRestaurantePage />} />
 
-          {/* Restaurant Management */}
+          {/* Restaurant Home & Management */}
+          <Route path="/restaurante-home" element={<RestauranteHomePage />} />
           <Route path="/gerencia-restaurante" element={<GerenciaRestaurantePage />} />
           <Route path="/gerencia-cardapio" element={<GerenciaCardapioPage />} />
           <Route path="/criar-produto" element={<CriarProdutoPage />} />
