@@ -22,6 +22,7 @@ import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
 import CriarProdutoPage from "./pages/CriarProdutoPage";
 import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
 import ClienteHomePage from "./pages/ClienteHomePage";
+import ClientePerfilPage from "./pages/ClientePerfilPage";
 import RestauranteHomePage from "./pages/RestauranteHomePage";
 import NotFound from "./pages/NotFound";
 
@@ -51,6 +52,7 @@ const App = () => (
           <Route path="/auth-login-cliente" element={<AuthLoginClientePage />} />
           <Route path="/auth-login-cliente/:token" element={<AuthLoginClientePage />} />
           <Route path="/cliente-home" element={<ClienteHomePage />} />
+          <Route path="/cliente-perfil" element={<ClientePerfilPage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />

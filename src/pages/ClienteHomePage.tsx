@@ -182,6 +182,13 @@ const ClienteHomePage = () => {
               <span className="text-[11px] text-muted-foreground">Salvos</span>
             </div>
           </button>
+          <button onClick={() => navigate("/cliente-perfil")} className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
+            <User size={20} className="text-primary" />
+            <div>
+              <span className="text-sm font-bold text-foreground block">Meu Perfil</span>
+              <span className="text-[11px] text-muted-foreground">Gerenciar</span>
+            </div>
+          </button>
         </motion.div>
       </div>
     </div>
