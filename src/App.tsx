@@ -22,6 +22,7 @@ import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
 import CriarProdutoPage from "./pages/CriarProdutoPage";
 import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
 import ClienteHomePage from "./pages/ClienteHomePage";
+import ClientePerfilPage from "./pages/ClientePerfilPage";
 import RestauranteHomePage from "./pages/RestauranteHomePage";
 import NotFound from "./pages/NotFound";
 
