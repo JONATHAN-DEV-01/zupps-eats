@@ -1,10 +1,17 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, ImageIcon, Plus, Loader2, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ImageIcon, Plus, Loader2, Save, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { fetchApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import AuthLayout from "@/components/AuthLayout";
+import { Switch } from "@/components/ui/switch";
+
+const CATEGORIAS = [
+  { value: "", label: "Geral" },
+  { value: "burgers", label: "Burgers" },
+  { value: "bebidas", label: "Bebidas" },
+  { value: "sobremesas", label: "Sobremesas" },
+];
 
 const CriarProdutoPage = () => {
   const navigate = useNavigate();
@@ -25,6 +32,8 @@ const CriarProdutoPage = () => {
     disponivel: true,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const restaurantId = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!).restaurante_id : null;
 
   useEffect(() => {
@@ -40,12 +49,12 @@ const CriarProdutoPage = () => {
               descricao: data.descricao || "",
               preco: data.preco.toString(),
               categoria_id: data.categoria_id || "",
-              disponivel: data.disponivel,
+              disponivel: data.disponivel !== false,
             });
             if (data.imagem) setImagePreview(`http://localhost:5000/uploads/${data.imagem}`);
           }
         } catch {
-          toast({ title: "Erro", description: "Falha ao carregar produto." });
+          toast({ title: "Erro", description: "Falha ao carregar produto.", variant: "destructive" });
         } finally {
           setFetching(false);
         }
@@ -57,6 +66,10 @@ const CriarProdutoPage = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "Imagem muito grande", description: "Máximo 5MB permitido.", variant: "destructive" });
+        return;
+      }
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
@@ -64,30 +77,44 @@ const CriarProdutoPage = () => {
     }
   };
 
+  const removeImage = () => {
+    setImagePreview(null);
+    setImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
+    if (formData.nome.length > 100) newErrors.nome = "Máximo 100 caracteres";
+    if (!formData.preco || parseFloat(formData.preco) <= 0) newErrors.preco = "Informe um preço válido";
+    if (formData.descricao.length > 500) newErrors.descricao = "Máximo 500 caracteres";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nome || !formData.preco || !restaurantId) return;
+    if (!validate() || !restaurantId) return;
 
     setLoading(true);
     try {
       const data = new FormData();
-      data.append("nome", formData.nome);
-      data.append("descricao", formData.descricao);
+      data.append("nome", formData.nome.trim());
+      data.append("descricao", formData.descricao.trim());
       data.append("preco", formData.preco);
       data.append("disponivel", String(formData.disponivel));
       data.append("restaurante_id", restaurantId);
+      if (formData.categoria_id) data.append("categoria_id", formData.categoria_id);
       if (imageFile) data.append("imagem", imageFile);
 
       const endpoint = id ? `/produtos/${id}` : "/produtos";
       const method = id ? "PATCH" : "POST";
 
-      const response = await fetchApi(endpoint, {
-        method,
-        body: data,
-      });
+      const response = await fetchApi(endpoint, { method, body: data });
 
       if (response.ok) {
-        toast({ title: id ? "Produto atualizado" : "Produto criado!" });
+        toast({ title: id ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!" });
         navigate("/gerencia-cardapio");
       } else {
         const error = await response.json();
@@ -108,83 +135,121 @@ const CriarProdutoPage = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
         <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button onClick={() => navigate("/gerencia-cardapio")} className="p-2 hover:bg-muted rounded-xl transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <h1 className="font-extrabold text-xl text-foreground">{id ? "Editar" : "Novo"} Produto</h1>
+            <h1 className="font-extrabold text-lg text-foreground">{id ? "Editar Produto" : "Novo Produto"}</h1>
           </div>
-          <button onClick={handleSubmit} disabled={loading} className="gradient-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-float hover:opacity-95 transition-opacity disabled:opacity-70">
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            Salvar
+          <button 
+            onClick={handleSubmit} 
+            disabled={loading} 
+            className="gradient-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-float hover:opacity-95 transition-opacity disabled:opacity-70"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {id ? "Atualizar" : "Salvar"}
           </button>
         </div>
       </header>
 
-      <div className="container py-8 max-w-2xl">
+      <div className="container py-6 max-w-2xl">
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* Image Upload Area */}
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className="aspect-video w-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center bg-card group relative"
-          >
-            {imagePreview ? (
-              <>
-                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Plus className="text-white" size={32} />
+          {/* Image Upload */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <label className="text-sm font-bold text-foreground mb-2 block">Foto do Produto</label>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="aspect-[16/9] w-full rounded-2xl border-2 border-dashed border-border hover:border-primary/50 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center bg-card group relative"
+            >
+              {imagePreview ? (
+                <>
+                  <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
+                  <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-primary-foreground text-sm font-bold bg-foreground/60 px-4 py-2 rounded-xl">Trocar Imagem</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeImage(); }}
+                    className="absolute top-3 right-3 p-1.5 bg-card/90 backdrop-blur rounded-lg text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all shadow-sm"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <div className="text-center p-6">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:bg-primary/20 transition-colors">
+                    <ImageIcon size={24} className="text-primary" />
+                  </div>
+                  <p className="text-sm font-bold text-foreground">Toque para adicionar foto</p>
+                  <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP • Máx 5MB</p>
                 </div>
-              </>
-            ) : (
-              <div className="text-center p-6">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <ImageIcon size={24} className="text-primary" />
-                </div>
-                <p className="text-sm font-bold text-foreground">Clique para adicionar imagem</p>
-                <p className="text-xs text-muted-foreground mt-1">Sugerido: 1000x1000px (Max 5MB)</p>
-              </div>
-            )}
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
-          </div>
+              )}
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
+            </div>
+          </motion.div>
 
-          <div className="space-y-4">
+          {/* Form Fields */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-4">
+            {/* Nome */}
             <div>
-              <label className="text-sm font-bold text-foreground mb-2 block">Nome do Produto *</label>
+              <label className="text-sm font-bold text-foreground mb-2 block">
+                Nome do Produto <span className="text-destructive">*</span>
+              </label>
               <input 
                 type="text" 
-                required 
                 value={formData.nome}
-                onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                placeholder="Ex: Burger de Costela" 
-                className="w-full h-12 px-4 rounded-xl bg-card border border-border text-sm font-medium focus:ring-2 focus:ring-primary/30 outline-none transition-all" 
+                onChange={(e) => { setFormData({...formData, nome: e.target.value}); setErrors({...errors, nome: ""}); }}
+                placeholder="Ex: X-Burger Especial" 
+                maxLength={100}
+                className={`w-full h-12 px-4 rounded-xl bg-card border text-sm font-medium focus:ring-2 focus:ring-primary/30 outline-none transition-all ${
+                  errors.nome ? "border-destructive" : "border-border"
+                }`}
               />
+              {errors.nome && <p className="text-xs text-destructive mt-1 font-medium">{errors.nome}</p>}
+              <p className="text-[10px] text-muted-foreground mt-1 text-right">{formData.nome.length}/100</p>
             </div>
 
+            {/* Descrição */}
             <div>
               <label className="text-sm font-bold text-foreground mb-2 block">Descrição</label>
               <textarea 
                 rows={3}
                 value={formData.descricao}
-                onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                placeholder="Conte o que tem no seu produto..." 
-                className="w-full p-4 rounded-xl bg-card border border-border text-sm font-medium focus:ring-2 focus:ring-primary/30 outline-none transition-all resize-none" 
+                onChange={(e) => { setFormData({...formData, descricao: e.target.value}); setErrors({...errors, descricao: ""}); }}
+                placeholder="Ingredientes, modo de preparo..." 
+                maxLength={500}
+                className={`w-full p-4 rounded-xl bg-card border text-sm font-medium focus:ring-2 focus:ring-primary/30 outline-none transition-all resize-none ${
+                  errors.descricao ? "border-destructive" : "border-border"
+                }`}
               />
+              {errors.descricao && <p className="text-xs text-destructive mt-1 font-medium">{errors.descricao}</p>}
+              <p className="text-[10px] text-muted-foreground mt-1 text-right">{formData.descricao.length}/500</p>
             </div>
 
+            {/* Preço e Categoria */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-bold text-foreground mb-2 block">Preço (R$) *</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  required 
-                  value={formData.preco}
-                  onChange={(e) => setFormData({...formData, preco: e.target.value})}
-                  placeholder="29.90" 
-                  className="w-full h-12 px-4 rounded-xl bg-card border border-border text-sm font-medium focus:ring-2 focus:ring-primary/30 outline-none transition-all" 
-                />
+                <label className="text-sm font-bold text-foreground mb-2 block">
+                  Preço (R$) <span className="text-destructive">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">R$</span>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    min="0"
+                    value={formData.preco}
+                    onChange={(e) => { setFormData({...formData, preco: e.target.value}); setErrors({...errors, preco: ""}); }}
+                    placeholder="0,00" 
+                    className={`w-full h-12 pl-10 pr-4 rounded-xl bg-card border text-sm font-bold focus:ring-2 focus:ring-primary/30 outline-none transition-all ${
+                      errors.preco ? "border-destructive" : "border-border"
+                    }`}
+                  />
+                </div>
+                {errors.preco && <p className="text-xs text-destructive mt-1 font-medium">{errors.preco}</p>}
               </div>
               <div>
                 <label className="text-sm font-bold text-foreground mb-2 block">Categoria</label>
@@ -193,27 +258,25 @@ const CriarProdutoPage = () => {
                   value={formData.categoria_id}
                   onChange={(e) => setFormData({...formData, categoria_id: e.target.value})}
                 >
-                  <option value="">Geral</option>
-                  <option value="burgers">Burgers</option>
-                  <option value="bebidas">Bebidas</option>
-                  <option value="sobremesas">Sobremesas</option>
+                  {CATEGORIAS.map(cat => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
+            {/* Disponibilidade */}
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border">
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-foreground">Disponibilidade</span>
-                <span className="text-xs text-muted-foreground">Produto ficará visível no cardápio</span>
+              <div>
+                <p className="text-sm font-bold text-foreground">Disponível no cardápio</p>
+                <p className="text-xs text-muted-foreground">Clientes poderão visualizar e pedir</p>
               </div>
-              <input 
-                type="checkbox" 
+              <Switch 
                 checked={formData.disponivel}
-                onChange={(e) => setFormData({...formData, disponivel: e.target.checked})}
-                className="w-12 h-6 rounded-full appearance-none bg-border checked:bg-primary transition-all cursor-pointer relative after:content-[''] after:absolute after:top-1 after:left-1 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all checked:after:left-7" 
+                onCheckedChange={(checked) => setFormData({...formData, disponivel: checked})}
               />
             </div>
-          </div>
+          </motion.div>
         </form>
       </div>
     </div>
