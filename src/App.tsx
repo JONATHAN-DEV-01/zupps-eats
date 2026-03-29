@@ -52,6 +52,7 @@ const App = () => (
           <Route path="/auth-login-cliente" element={<AuthLoginClientePage />} />
           <Route path="/auth-login-cliente/:token" element={<AuthLoginClientePage />} />
           <Route path="/cliente-home" element={<ClienteHomePage />} />
+          <Route path="/cliente-perfil" element={<ClientePerfilPage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />
