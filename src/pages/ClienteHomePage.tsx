@@ -60,10 +60,41 @@ const ClienteHomePage = () => {
               <MapPin size={14} className="text-primary" />
               <span className="hidden sm:inline">Localização</span>
             </button>
-            <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors">
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                <User size={16} />
+                <span className="hidden sm:inline">Perfil</span>
+                <ChevronDown size={14} className={`text-muted-foreground transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-52 rounded-xl bg-card border border-border shadow-lg overflow-hidden z-50"
+                  >
+                    <button onClick={() => { setMenuOpen(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                      <ShoppingBag size={16} className="text-primary" /> Meus Pedidos
+                    </button>
+                    <button onClick={() => { setMenuOpen(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                      <Heart size={16} className="text-destructive" /> Favoritos
+                    </button>
+                    <button onClick={() => { setMenuOpen(false); navigate("/cliente-perfil"); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                      <User size={16} className="text-primary" /> Meu Perfil
+                    </button>
+                    <div className="h-px bg-border" />
+                    <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-destructive hover:bg-muted transition-colors">
+                      <LogOut size={16} /> Sair
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </header>
