@@ -205,35 +205,7 @@ const ClienteHomePage = () => {
           </div>
         </motion.div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-6 grid grid-cols-2 gap-3 pb-8"
-        >
-          <button className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
-            <ShoppingBag size={20} className="text-primary" />
-            <div>
-              <span className="text-sm font-bold text-foreground block">Meus Pedidos</span>
-              <span className="text-[11px] text-muted-foreground">Histórico</span>
-            </div>
-          </button>
-          <button className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
-            <Heart size={20} className="text-destructive" />
-            <div>
-              <span className="text-sm font-bold text-foreground block">Favoritos</span>
-              <span className="text-[11px] text-muted-foreground">Salvos</span>
-            </div>
-          </button>
-          <button onClick={() => navigate("/cliente-perfil")} className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
-            <User size={20} className="text-primary" />
-            <div>
-              <span className="text-sm font-bold text-foreground block">Meu Perfil</span>
-              <span className="text-[11px] text-muted-foreground">Gerenciar</span>
-            </div>
-          </button>
-        </motion.div>
+        <div className="pb-8" />
       </div>
     </div>
   );
