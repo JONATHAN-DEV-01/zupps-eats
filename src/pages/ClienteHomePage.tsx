@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
-import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { getUserProfile, removeAuthToken } from "@/lib/api";
+import { useState, useRef, useEffect } from "react";
 
 const quickCategories = [
   { emoji: "🍕", label: "Pizza" },
@@ -22,6 +23,18 @@ const ClienteHomePage = () => {
   const navigate = useNavigate();
   const user = getUserProfile();
   const firstName = user?.nome?.split(" ")[0] || "Cliente";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -47,10 +60,41 @@ const ClienteHomePage = () => {
               <MapPin size={14} className="text-primary" />
               <span className="hidden sm:inline">Localização</span>
             </button>
-            <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors">
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                <User size={16} />
+                <span className="hidden sm:inline">Perfil</span>
+                <ChevronDown size={14} className={`text-muted-foreground transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+              </button>
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-52 rounded-xl bg-card border border-border shadow-lg overflow-hidden z-50"
+                  >
+                    <button onClick={() => { setMenuOpen(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                      <ShoppingBag size={16} className="text-primary" /> Meus Pedidos
+                    </button>
+                    <button onClick={() => { setMenuOpen(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                      <Heart size={16} className="text-destructive" /> Favoritos
+                    </button>
+                    <button onClick={() => { setMenuOpen(false); navigate("/cliente-perfil"); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                      <User size={16} className="text-primary" /> Meu Perfil
+                    </button>
+                    <div className="h-px bg-border" />
+                    <button onClick={() => { setMenuOpen(false); handleLogout(); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-destructive hover:bg-muted transition-colors">
+                      <LogOut size={16} /> Sair
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </header>
@@ -161,35 +205,7 @@ const ClienteHomePage = () => {
           </div>
         </motion.div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-6 grid grid-cols-2 gap-3 pb-8"
-        >
-          <button className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
-            <ShoppingBag size={20} className="text-primary" />
-            <div>
-              <span className="text-sm font-bold text-foreground block">Meus Pedidos</span>
-              <span className="text-[11px] text-muted-foreground">Histórico</span>
-            </div>
-          </button>
-          <button className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
-            <Heart size={20} className="text-destructive" />
-            <div>
-              <span className="text-sm font-bold text-foreground block">Favoritos</span>
-              <span className="text-[11px] text-muted-foreground">Salvos</span>
-            </div>
-          </button>
-          <button onClick={() => navigate("/cliente-perfil")} className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all text-left">
-            <User size={20} className="text-primary" />
-            <div>
-              <span className="text-sm font-bold text-foreground block">Meu Perfil</span>
-              <span className="text-[11px] text-muted-foreground">Gerenciar</span>
-            </div>
-          </button>
-        </motion.div>
+        <div className="pb-8" />
       </div>
     </div>
   );
