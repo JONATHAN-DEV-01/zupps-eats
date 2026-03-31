@@ -41,7 +41,7 @@ const AuthLoginRestaurantePage = () => {
         }
         
         toast({ title: "Login realizado", description: `Bem-vindo, ${userData?.nome_fantasia || userData?.nome || "Restaurante"}!` });
-        navigate("/gerencia-restaurante");
+        navigate("/restaurante-home");
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Código inválido.", variant: "destructive" });
       }

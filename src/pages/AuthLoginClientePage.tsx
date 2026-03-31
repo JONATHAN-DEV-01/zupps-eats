@@ -41,8 +41,8 @@ const AuthLoginClientePage = () => {
     toast({ title: "Login realizado", description: `Bem-vindo, ${data.user?.nome || "usuário"}!` });
     
     // Redirect based on profile
-    if (data.user?.perfil === "RESTAURANTE") navigate("/gerencia-restaurante");
-    else navigate("/home");
+    if (data.user?.perfil === "RESTAURANTE") navigate("/restaurante-home");
+    else navigate("/cliente-home");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

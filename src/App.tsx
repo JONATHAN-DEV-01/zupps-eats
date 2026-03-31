@@ -21,6 +21,9 @@ import GerenciaRestaurantePage from "./pages/GerenciaRestaurantePage";
 import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
 import CriarProdutoPage from "./pages/CriarProdutoPage";
 import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
+import ClienteHomePage from "./pages/ClienteHomePage";
+import ClientePerfilPage from "./pages/ClientePerfilPage";
+import RestauranteHomePage from "./pages/RestauranteHomePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,10 +47,12 @@ const App = () => (
           <Route path="/cadastro-cliente" element={<CadastroPage />} />
           <Route path="/cadastro-endereco-cliente" element={<EnderecoPage />} />
 
-          {/* Customer Login */}
+          {/* Customer Login & Dashboard */}
           <Route path="/login-cliente" element={<LoginClientePage />} />
           <Route path="/auth-login-cliente" element={<AuthLoginClientePage />} />
           <Route path="/auth-login-cliente/:token" element={<AuthLoginClientePage />} />
+          <Route path="/cliente-home" element={<ClienteHomePage />} />
+          <Route path="/cliente-perfil" element={<ClientePerfilPage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />
@@ -58,7 +63,8 @@ const App = () => (
           <Route path="/cadastro-logo-restaurante" element={<CadastroLogoRestaurantePage />} />
           <Route path="/cadastro-horario-restaurante" element={<CadastroHorarioRestaurantePage />} />
 
-          {/* Restaurant Management */}
+          {/* Restaurant Home & Management */}
+          <Route path="/restaurante-home" element={<RestauranteHomePage />} />
           <Route path="/gerencia-restaurante" element={<GerenciaRestaurantePage />} />
           <Route path="/gerencia-cardapio" element={<GerenciaCardapioPage />} />
           <Route path="/criar-produto" element={<CriarProdutoPage />} />
