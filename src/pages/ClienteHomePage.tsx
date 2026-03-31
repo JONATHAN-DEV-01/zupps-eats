@@ -1,7 +1,8 @@
-import { motion } from "framer-motion";
-import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { getUserProfile, removeAuthToken } from "@/lib/api";
+import { useState, useRef, useEffect } from "react";
 
 const quickCategories = [
   { emoji: "🍕", label: "Pizza" },
