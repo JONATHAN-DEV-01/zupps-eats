@@ -3,7 +3,7 @@ import { Store, Power, Settings, Clock, ImageIcon, FileText, LogOut, Loader2 } f
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { fetchApi, getUserProfile, removeAuthToken } from "@/lib/api";
+import { API_BASE_URL, fetchApi, getUserProfile, logout } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const GerenciaRestaurantePage = () => {
@@ -14,32 +14,26 @@ const GerenciaRestaurantePage = () => {
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const user = getUserProfile();
-
   useEffect(() => {
     const loadRestaurant = async () => {
-      if (!user) {
+      const currentUser = getUserProfile();
+      if (!currentUser) {
         navigate("/login-restaurante");
         return;
       }
       
-      try {
-        const response = await fetchApi(`/restaurantes?usuario_id=${user.id}`);
-        const data = await response.json();
-        if (response.ok && data.length > 0) {
-          setRestaurant(data[0]);
-          setActive(data[0].ativo);
-        } else if (response.ok) {
-           navigate("/cadastro-dados-restaurante");
-        }
-      } catch {
-        toast({ title: "Erro", description: "Falha ao carregar dados do restaurante.", variant: "destructive" });
-      } finally {
+      // If the profile has a CNPJ or nome_fantasia, it's a restaurant profile.
+      if (currentUser.cnpj || currentUser.nome_fantasia) {
+        setRestaurant(currentUser);
+        setActive(currentUser.ativo !== undefined ? currentUser.ativo : true);
         setLoading(false);
+      } else {
+        // Normal user profile - must log in as restaurant
+        navigate("/login-restaurante");
       }
     };
     loadRestaurant();
-  }, [user, navigate]);
+  }, [navigate]);
 
   const handleStatusToggle = async (checked: boolean) => {
     if (!restaurant) return;
@@ -65,9 +59,9 @@ const GerenciaRestaurantePage = () => {
   };
 
   const handleLogout = () => {
-    removeAuthToken();
-    sessionStorage.clear();
-    navigate("/login-restaurante");
+    logout();
+    navigate("/");
+    window.location.reload();
   };
 
   if (loading) return (
@@ -101,7 +95,7 @@ const GerenciaRestaurantePage = () => {
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 rounded-2xl overflow-hidden bg-muted flex items-center justify-center">
                 {restaurant?.logotipo ? (
-                   <img src={`http://localhost:5000/uploads/${restaurant.logotipo}`} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
+                   <img src={`${API_BASE_URL}/${restaurant.logotipo.replace(/\\/g, '/')}`} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
                 ) : (
                   <Store size={28} className="text-muted-foreground" />
                 )}

@@ -65,7 +65,7 @@ const AuthLoginClientePage = () => {
         ? { email, codigo: code }
         : { telefone, codigo: code };
 
-      const response = await fetchApi("/auth/login/verify", {
+      const response = await fetchApi("/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify(body),
       });

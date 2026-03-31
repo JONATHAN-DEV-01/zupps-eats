@@ -88,10 +88,10 @@ const AdicionaisProdutoPage = () => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // Typically you'd send the full state to a sync endpoint or hit individual endpoints
+      // Syncs the full array of groups directly to the backend
       const response = await fetchApi(`/produtos/${id}/grupos-adicionais`, {
         method: "POST",
-        body: JSON.stringify({ grupos }),
+        body: JSON.stringify(grupos),
       });
 
       if (response.ok) {

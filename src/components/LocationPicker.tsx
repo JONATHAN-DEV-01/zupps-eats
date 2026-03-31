@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api';
-import { Loader2, MapPin } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { Loader2, MapPin, MapPinned } from 'lucide-react';
 
 const mapContainerStyle = {
   width: '100%',
@@ -13,6 +13,7 @@ const center = {
   lng: -46.6333,
 };
 
+// Utilizamos a biblioteca 'places' mas agora integraremos explicitamente com a versão NEW.
 const LIBRARIES: ("places")[] = ['places'];
 
 interface LocationPickerProps {
@@ -35,7 +36,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [marker, setMarker] = useState<google.maps.LatLngLiteral>(center);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const onLoad = useCallback(function callback(map: google.maps.Map) {
     setMap(map);
@@ -45,45 +51,98 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
     setMap(null);
   }, []);
 
-  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
-    setAutocomplete(autocompleteInstance);
-  };
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        const location = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
+  // Buscar sugestões (New Places API)
+  useEffect(() => {
+    if (!isLoaded || query.trim().length <= 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      try {
+        setLoadingSuggestions(true);
+        // Usa a nova API de Places
+        const { AutocompleteSuggestion } = await google.maps.importLibrary("places") as any;
+        
+        const request = {
+          input: query,
+          includedRegionCodes: ["br"], // Opcional, forçar Brasil se for seu público alvo
         };
+        
+        const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+        setSuggestions(response.suggestions || []);
+        setShowDropdown(true);
+      } catch (error) {
+        console.error("Erro ao buscar endereços (Places API New):", error);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    };
+
+    const debounce = setTimeout(() => {
+      fetchSuggestions();
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [query, isLoaded]);
+
+  // Escolher uma sugestão
+  const handleSelectSuggestion = async (suggestion: any) => {
+    const text = suggestion.placePrediction?.text?.text || "";
+    setQuery(text);
+    setShowDropdown(false);
+    
+    try {
+      const { Place } = await google.maps.importLibrary("places") as any;
+      const place = new Place({ id: suggestion.placePrediction.placeId });
+      
+      // Busca loc e componentes de endereço
+      await place.fetchFields({ fields: ['location', 'addressComponents'] });
+      
+      if (place.location) {
+        const location = { lat: place.location.lat(), lng: place.location.lng() };
         setMarker(location);
         map?.panTo(location);
         map?.setZoom(17);
-
-        // Extract address components
-        const addressComponents = place.address_components || [];
-        const address = {
-          logradouro: '',
-          bairro: '',
-          cidade: '',
-          estado: '',
-          numero: '',
-          cep: '',
-        };
-
-        addressComponents.forEach((component) => {
-          const types = component.types;
-          if (types.includes('route')) address.logradouro = component.long_name;
-          if (types.includes('sublocality_level_1') || types.includes('administrative_area_level_3')) address.bairro = component.long_name;
-          if (types.includes('administrative_area_level_2')) address.cidade = component.long_name;
-          if (types.includes('administrative_area_level_1')) address.estado = component.short_name;
-          if (types.includes('street_number')) address.numero = component.long_name;
-          if (types.includes('postal_code')) address.cep = component.long_name;
-        });
-
-        onLocationSelect(address);
       }
+      
+      const addressComponents = place.addressComponents || [];
+      const address = {
+        logradouro: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        numero: '',
+        cep: '',
+      };
+
+      // Tratativa principal: iterar sobre os componentes e garantir preenchimento. 
+      // Se não vier, continuará garantido como "" (string vazia).
+      addressComponents.forEach((component: any) => {
+        const types = component.types;
+        if (types.includes('route')) address.logradouro = component.longText;
+        if (types.includes('sublocality_level_1') || types.includes('sublocality') || types.includes('administrative_area_level_3')) address.bairro = component.longText;
+        if (types.includes('administrative_area_level_2')) address.cidade = component.longText;
+        if (types.includes('administrative_area_level_1')) address.estado = component.shortText;
+        if (types.includes('street_number')) address.numero = component.longText;
+        if (types.includes('postal_code')) address.cep = component.longText;
+      });
+
+      onLocationSelect(address);
+
+    } catch (error) {
+      console.error("Erro ao buscar detalhes do local:", error);
     }
   };
 
@@ -95,15 +154,44 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
 
   return (
     <div className="space-y-4">
-      <div className="relative">
+      <div className="relative" ref={dropdownRef}>
         <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
-        <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
-          <input
-            type="text"
-            placeholder="Buscar endereço..."
-            className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-          />
-        </Autocomplete>
+        <input
+          type="text"
+          placeholder="Buscar endereço..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setShowDropdown(true);
+          }}
+          onFocus={() => setShowDropdown(true)}
+          className="w-full h-12 pl-11 pr-11 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+        {loadingSuggestions && (
+          <Loader2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+        )}
+
+        {/* Dropdown customizado */}
+        {showDropdown && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden max-h-60 overflow-y-auto">
+            {suggestions.map((suggestion, idx) => (
+              <div
+                key={idx}
+                onClick={() => handleSelectSuggestion(suggestion)}
+                className="px-4 py-3 hover:bg-muted/50 cursor-pointer flex items-center gap-3 border-b border-border/40 last:border-0 transition-colors"
+              >
+                <div className="flex-shrink-0 bg-muted p-2 rounded-full">
+                  <MapPinned size={14} className="text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-foreground">
+                    {suggestion.placePrediction?.text?.text}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       <GoogleMap

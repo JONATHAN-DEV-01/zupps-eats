@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ImageIcon, Plus, Loader2, Save, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { fetchApi } from "@/lib/api";
+import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import AuthLayout from "@/components/AuthLayout";
 
@@ -25,7 +25,8 @@ const CriarProdutoPage = () => {
     disponivel: true,
   });
 
-  const restaurantId = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!).restaurante_id : null;
+  const userProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+  const restaurantId = userProfile?.id || userProfile?.restaurante_id;
 
   useEffect(() => {
     if (id) {
@@ -42,7 +43,7 @@ const CriarProdutoPage = () => {
               categoria_id: data.categoria_id || "",
               disponivel: data.disponivel,
             });
-            if (data.imagem) setImagePreview(`http://localhost:5000/uploads/${data.imagem}`);
+            if (data.imagem) setImagePreview(`${API_BASE_URL}/${data.imagem.replace(/\\/g, '/')}`);
           }
         } catch {
           toast({ title: "Erro", description: "Falha ao carregar produto." });
@@ -57,9 +58,27 @@ const CriarProdutoPage = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
+      // Validar Tamanho Máximo (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "Arquivo muito grande", description: "A imagem deve ter no máximo 5MB.", variant: "destructive" });
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.onloadend = () => {
+        // Validar Resolução Mínima (800x800)
+        const img = new Image();
+        img.onload = () => {
+          if (img.width < 800 || img.height < 800) {
+            toast({ title: "Baixa resolução", description: "A imagem deve ter no mínimo 800x800 pixels.", variant: "destructive" });
+            return;
+          }
+          // Passou em todas as validações
+          setImagePreview(img.src);
+          setImageFile(file);
+        };
+        img.src = reader.result as string;
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -76,6 +95,10 @@ const CriarProdutoPage = () => {
       data.append("preco", formData.preco);
       data.append("disponivel", String(formData.disponivel));
       data.append("restaurante_id", restaurantId);
+      
+      const categoryName = formData.categoria_id || "Geral";
+      data.append("categoria_id", categoryName);
+      
       if (imageFile) data.append("imagem", imageFile);
 
       const endpoint = id ? `/produtos/${id}` : "/produtos";
@@ -146,7 +169,7 @@ const CriarProdutoPage = () => {
                 <p className="text-xs text-muted-foreground mt-1">Sugerido: 1000x1000px (Max 5MB)</p>
               </div>
             )}
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/jpeg, image/png, image/webp" onChange={handleImageChange} />
           </div>
 
           <div className="space-y-4">
@@ -155,6 +178,7 @@ const CriarProdutoPage = () => {
               <input 
                 type="text" 
                 required 
+                maxLength={100}
                 value={formData.nome}
                 onChange={(e) => setFormData({...formData, nome: e.target.value})}
                 placeholder="Ex: Burger de Costela" 
@@ -166,6 +190,7 @@ const CriarProdutoPage = () => {
               <label className="text-sm font-bold text-foreground mb-2 block">Descrição</label>
               <textarea 
                 rows={3}
+                maxLength={500}
                 value={formData.descricao}
                 onChange={(e) => setFormData({...formData, descricao: e.target.value})}
                 placeholder="Conte o que tem no seu produto..." 
@@ -203,8 +228,10 @@ const CriarProdutoPage = () => {
 
             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border border-border">
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-foreground">Disponibilidade</span>
-                <span className="text-xs text-muted-foreground">Produto ficará visível no cardápio</span>
+                <span className="text-sm font-bold text-foreground">Disponibilidade no Cardápio</span>
+                <span className="text-xs text-muted-foreground">
+                  Se desmarcado, aparecerá para os clientes como <strong>"Esgotado"</strong>
+                </span>
               </div>
               <input 
                 type="checkbox" 

@@ -10,6 +10,13 @@ export const getUserProfile = () => {
 };
 export const setUserProfile = (user: any) => localStorage.setItem("user_profile", JSON.stringify(user));
 
+export const logout = () => {
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("user_profile");
+  sessionStorage.clear();
+};
+
+
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const token = getAuthToken();
   const headers = new Headers(options.headers || {});

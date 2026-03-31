@@ -1,8 +1,9 @@
-import { Building, CreditCard, MapPin, Phone, FileText, UtensilsCrossed, ArrowRight, Loader2, Mail } from "lucide-react";
+import { Building, CreditCard, MapPin, Phone, FileText, UtensilsCrossed, ArrowRight, Loader2, Mail, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/lib/api";
+import { formatPhone } from "@/lib/utils";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-cadastro-restaurante.jpg";
 
@@ -15,14 +16,17 @@ const CadastroDadosRestaurantePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [email, setEmail] = useState("");
-  const [nomeFantasia, setNomeFantasia] = useState("");
-  const [razaoSocial, setRazaoSocial] = useState("");
-  const [cnpj, setCnpj] = useState("");
-  const [endereco, setEndereco] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const userProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+  const isEditing = Boolean(userProfile?.cnpj || userProfile?.perfil === "RESTAURANTE");
+
+  const [email, setEmail] = useState(isEditing ? userProfile?.email || "" : "");
+  const [nomeFantasia, setNomeFantasia] = useState(isEditing ? userProfile?.nome_fantasia || "" : "");
+  const [razaoSocial, setRazaoSocial] = useState(isEditing ? userProfile?.razao_social || "" : "");
+  const [cnpj, setCnpj] = useState(isEditing ? userProfile?.cnpj || "" : "");
+  const [endereco, setEndereco] = useState(isEditing ? userProfile?.endereco || "" : "");
+  const [telefone, setTelefone] = useState(isEditing ? userProfile?.telefone || "" : "");
+  const [descricao, setDescricao] = useState(isEditing ? userProfile?.descricao || "" : "");
+  const [categoria, setCategoria] = useState(isEditing ? userProfile?.categoria || "" : "");
   const [loading, setLoading] = useState(false);
 
   const formatCnpj = (value: string) => {
@@ -62,6 +66,12 @@ const CadastroDadosRestaurantePage = () => {
       panelTitle="Cadastre seu restaurante"
       panelSubtitle="Preencha os dados do seu estabelecimento para começar a vender no Zupps."
     >
+      {isEditing && (
+        <button type="button" onClick={() => navigate("/gerencia-restaurante")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ArrowLeft size={16} />
+          Voltar para o Gerenciamento
+        </button>
+      )}
       <h1 className="text-2xl font-extrabold text-foreground mb-2">Dados do Restaurante</h1>
       <p className="text-muted-foreground text-sm mb-6">Preencha as informações do seu estabelecimento</p>
 
@@ -88,7 +98,7 @@ const CadastroDadosRestaurantePage = () => {
         </div>
         <div className="relative">
           <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="tel" placeholder="Telefone *" aria-label="Telefone" required value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={loading} className={inputClass} />
+          <input type="tel" placeholder="Telefone *" aria-label="Telefone" required value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} disabled={loading} className={inputClass} />
         </div>
         <div className="relative">
           <FileText size={16} className="absolute left-4 top-3.5 text-muted-foreground" />
@@ -103,7 +113,7 @@ const CadastroDadosRestaurantePage = () => {
         </div>
 
         <button type="submit" disabled={loading} className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70">
-          {loading ? <Loader2 size={16} className="animate-spin" /> : (<>Avançar <ArrowRight size={16} /></>)}
+          {loading ? <Loader2 size={16} className="animate-spin" /> : (<>{isEditing ? "Salvar Alterações" : "Avançar"} <ArrowRight size={16} /></>)}
         </button>
       </form>
     </AuthLayout>

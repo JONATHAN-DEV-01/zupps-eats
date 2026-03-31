@@ -2,7 +2,7 @@ import { MapPin, Home, Hash, Building, ArrowRight, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, setAuthToken, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import LocationPicker from "@/components/LocationPicker";
 import foodImage from "@/assets/food-endereco.jpg";
@@ -55,6 +55,7 @@ const EnderecoPage = () => {
         method: "POST",
         body: JSON.stringify({
           user_id: userId,
+          endereco: `${address.logradouro}, ${address.numero} - ${address.bairro}`,
           ...address,
         }),
       });
@@ -65,8 +66,10 @@ const EnderecoPage = () => {
         toast({ title: "Cadastro concluído", description: "Bem-vindo ao Zupps!" });
         sessionStorage.clear();
         if (data.token) {
-          localStorage.setItem("auth_token", data.token);
-          localStorage.setItem("user_profile", JSON.stringify(data.user));
+          setAuthToken(data.token);
+        }
+        if (data.user) {
+          setUserProfile(data.user);
         }
         navigate("/home");
       } else {

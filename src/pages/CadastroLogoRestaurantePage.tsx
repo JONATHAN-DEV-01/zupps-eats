@@ -1,4 +1,4 @@
-import { ImageIcon, ArrowRight, Loader2, Upload } from "lucide-react";
+import { ImageIcon, ArrowRight, Loader2, Upload, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,10 +12,17 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const CadastroLogoRestaurantePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const userProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+  const isEditing = Boolean(userProfile?.cnpj || userProfile?.perfil === "RESTAURANTE");
+
   const [cover, setCover] = useState<File | null>(null);
   const [logo, setLogo] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(
+    isEditing && userProfile?.capa ? `${API_BASE_URL}/${userProfile.capa.replace(/\\/g, '/')}` : null
+  );
+  const [logoPreview, setLogoPreview] = useState<string | null>(
+    isEditing && userProfile?.logotipo ? `${API_BASE_URL}/${userProfile.logotipo.replace(/\\/g, '/')}` : null
+  );
   const [loading, setLoading] = useState(false);
   const coverRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
@@ -34,47 +41,61 @@ const CadastroLogoRestaurantePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!logo) {
+    if (!isEditing && !logo) {
       toast({ title: "Logo obrigatório", description: "Por favor, selecione um logotipo para o seu restaurante.", variant: "destructive" });
       return;
     }
 
     const pendingData = sessionStorage.getItem("pending_restaurant_data");
-    if (!pendingData) {
+    if (!isEditing && !pendingData) {
       toast({ title: "Erro", description: "Dados do restaurante não encontrados. Reinicie o cadastro.", variant: "destructive" });
       navigate("/cadastro-dados-restaurante");
       return;
     }
 
-    const restaurantData = JSON.parse(pendingData);
-
-
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("nome_fantasia", restaurantData.nome_fantasia);
-      formData.append("razao_social", restaurantData.razao_social);
-      formData.append("cnpj", restaurantData.cnpj);
-      formData.append("endereco", restaurantData.endereco);
-      formData.append("telefone", restaurantData.telefone);
-      formData.append("descricao", restaurantData.descricao);
-      formData.append("categoria_id", restaurantData.categoria); // Using name as ID for now or map to ID
-      formData.append("email", restaurantData.email);
-      formData.append("logotipo", logo);
+      
+      // If pending data exists, append text fields (for both Create mode and bulk Edit mode)
+      if (pendingData) {
+        const restaurantData = JSON.parse(pendingData);
+        formData.append("nome_fantasia", restaurantData.nome_fantasia);
+        formData.append("razao_social", restaurantData.razao_social);
+        formData.append("cnpj", restaurantData.cnpj);
+        formData.append("endereco", restaurantData.endereco);
+        formData.append("telefone", restaurantData.telefone);
+        if (restaurantData.descricao) formData.append("descricao", restaurantData.descricao);
+        formData.append("categoria_id", restaurantData.categoria);
+        formData.append("email", restaurantData.email);
+      }
+
+      if (logo) formData.append("logotipo", logo);
       if (cover) formData.append("capa", cover);
 
-      const response = await fetchApi("/restaurantes", {
-        method: "POST",
+      const endpoint = isEditing ? `/restaurantes/${userProfile.id || userProfile.restaurante_id}` : "/restaurantes";
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetchApi(endpoint, {
+        method,
         body: formData,
       });
 
       const data = await response.json();
       if (response.ok) {
+        const newProfile = { ...userProfile, ...data, perfil: "RESTAURANTE" };
+        localStorage.setItem("user_profile", JSON.stringify(newProfile));
         sessionStorage.setItem("restaurant_id", data.id || data.restaurante_id);
         sessionStorage.removeItem("pending_restaurant_data");
-        navigate("/cadastro-horario-restaurante");
+        
+        toast({ title: "Sucesso!", description: isEditing ? "Dados atualizados com sucesso." : "Restaurante criado com sucesso." });
+        if (isEditing) {
+          navigate("/gerencia-restaurante");
+        } else {
+          navigate("/cadastro-horario-restaurante");
+        }
       } else {
-        toast({ title: "Erro", description: data.message || data.error || "Erro ao cadastrar restaurante.", variant: "destructive" });
+        toast({ title: "Erro", description: data.message || data.error || "Erro ao salvar dados.", variant: "destructive" });
       }
     } catch {
       toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor.", variant: "destructive" });
@@ -107,6 +128,12 @@ const CadastroLogoRestaurantePage = () => {
       panelTitle="Imagens do restaurante"
       panelSubtitle="Adicione a capa e logo do seu estabelecimento para atrair mais clientes."
     >
+      {isEditing && (
+        <button type="button" onClick={() => navigate("/gerencia-restaurante")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ArrowLeft size={16} />
+          Voltar para o Gerenciamento
+        </button>
+      )}
       <h1 className="text-2xl font-extrabold text-foreground mb-2">Imagens</h1>
       <p className="text-muted-foreground text-sm mb-6">Envie a capa e o logo do seu restaurante</p>
 
@@ -121,7 +148,7 @@ const CadastroLogoRestaurantePage = () => {
         </div>
 
         <button type="submit" disabled={loading} className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70">
-          {loading ? <Loader2 size={16} className="animate-spin" /> : (<>Avançar <ArrowRight size={16} /></>)}
+          {loading ? <Loader2 size={16} className="animate-spin" /> : (<>{isEditing ? "Salvar Alterações" : "Avançar"} <ArrowRight size={16} /></>)}
         </button>
       </form>
     </AuthLayout>

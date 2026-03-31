@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Plus, Search, Edit2, Trash2, Package, Loader2, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { fetchApi } from "@/lib/api";
+import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const GerenciaCardapioPage = () => {
@@ -12,7 +12,8 @@ const GerenciaCardapioPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const restaurantId = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!).restaurante_id : null;
+  const userProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+  const restaurantId = userProfile?.id || userProfile?.restaurante_id;
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -113,12 +114,20 @@ const GerenciaCardapioPage = () => {
               >
                 <div className="aspect-video bg-muted relative">
                   {product.imagem ? (
-                    <img src={`http://localhost:5000/uploads/${product.imagem}`} alt={product.nome} className="w-full h-full object-cover" />
+                    <img src={`${API_BASE_URL}/${product.imagem.replace(/\\/g, '/')}`} alt={product.nome} className={`w-full h-full object-cover transition-opacity ${!product.disponivel ? "opacity-50 grayscale" : ""}`} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <Package size={40} />
                     </div>
                   )}
+                  
+                  {/* Badge de Esgotado */}
+                  {!product.disponivel && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-destructive text-destructive-foreground px-3 py-1 rounded-lg text-xs font-bold shadow-lg uppercase tracking-wider backdrop-blur-sm bg-opacity-90">
+                      Esgotado
+                    </div>
+                  )}
+
                   <div className="absolute top-2 right-2 flex gap-2">
                     <button onClick={() => navigate(`/editar-produto/${product.id}`)} className="p-2 bg-card/90 backdrop-blur rounded-lg text-foreground hover:bg-primary hover:text-primary-foreground transition-all shadow-sm">
                       <Edit2 size={16} />

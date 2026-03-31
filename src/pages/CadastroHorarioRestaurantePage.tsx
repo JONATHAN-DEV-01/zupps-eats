@@ -1,8 +1,8 @@
-import { Clock, ArrowRight, Loader2 } from "lucide-react";
+import { Clock, ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import { Switch } from "@/components/ui/switch";
 import foodImage from "@/assets/food-horario-restaurante.jpg";
@@ -30,18 +30,60 @@ const defaultSchedule: Record<string, DaySchedule> = Object.fromEntries(
 const CadastroHorarioRestaurantePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const userProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+  const isEditing = Boolean(userProfile?.cnpj || userProfile?.perfil === "RESTAURANTE");
+
   const [schedule, setSchedule] = useState<Record<string, DaySchedule>>(defaultSchedule);
-  const [active, setActive] = useState(true);
+  const [active, setActive] = useState(userProfile?.ativo !== undefined ? userProfile.ativo : true);
   const [loading, setLoading] = useState(false);
 
   const updateDay = (key: string, field: keyof DaySchedule, value: string | boolean) => {
     setSchedule((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   };
 
+  useEffect(() => {
+    const fetchHorarios = async () => {
+      const uProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+      const refId = sessionStorage.getItem("restaurant_id") || uProfile?.id || uProfile?.restaurante_id;
+      if (!isEditing || !refId) return;
+
+      try {
+        setLoading(true);
+        const response = await fetchApi(`/restaurantes/${refId}/horarios`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const newSchedule: Record<string, DaySchedule> = Object.fromEntries(
+              DAYS.map((d) => [d.key, { open: "08:00", close: "22:00", closed: true }])
+            );
+            data.forEach((h: any) => {
+              const dayIndex = h.dia_semana === 0 ? 6 : h.dia_semana - 1;
+              const dayObj = DAYS[dayIndex];
+              if (dayObj) {
+                newSchedule[dayObj.key] = {
+                  open: h.abertura || "08:00",
+                  close: h.fechamento || "22:00",
+                  closed: false
+                };
+              }
+            });
+            setSchedule(newSchedule);
+          }
+        }
+      } catch (err) {
+        console.error("Falha ao carregar horários", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHorarios();
+  }, [isEditing]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const restaurantId = sessionStorage.getItem("restaurant_id");
+    const userProfile = localStorage.getItem("user_profile") ? JSON.parse(localStorage.getItem("user_profile")!) : null;
+    const restaurantId = sessionStorage.getItem("restaurant_id") || userProfile?.id || userProfile?.restaurante_id;
     if (!restaurantId) {
       toast({ title: "Erro", description: "ID do restaurante não encontrado.", variant: "destructive" });
       return;
@@ -52,17 +94,31 @@ const CadastroHorarioRestaurantePage = () => {
       const response = await fetchApi(`/restaurantes/${restaurantId}/horarios`, {
         method: "POST",
         body: JSON.stringify(
-          Object.entries(schedule).map(([day, times]) => ({
-            dia_semana: DAYS.find(d => d.key === day)?.key === "dom" ? 0 : DAYS.findIndex(d => d.key === day) + 1,
-            abertura: times.open,
-            fechamento: times.close,
-            fechado: times.closed
-          }))
+          Object.entries(schedule)
+            .filter(([, times]) => !times.closed)
+            .map(([day, times]) => ({
+              dia_semana: DAYS.find(d => d.key === day)?.key === "dom" ? 0 : DAYS.findIndex(d => d.key === day) + 1,
+              abertura: times.open,
+              fechamento: times.close
+            }))
         ),
       });
       const data = await response.json();
       if (response.ok) {
-        toast({ title: "Restaurante cadastrado!", description: "Seu restaurante foi registrado com sucesso." });
+        
+        if (isEditing && active !== userProfile.ativo) {
+          await fetchApi(`/restaurantes/${restaurantId}/status`, {
+            method: "PATCH",
+            body: JSON.stringify({ ativo: active }),
+          });
+          const updatedProfile = { ...userProfile, ativo: active };
+          setUserProfile(updatedProfile);
+        }
+
+        toast({ 
+          title: isEditing ? "Horários atualizados!" : "Restaurante cadastrado!", 
+          description: isEditing ? "Os novos horários foram salvos com sucesso." : "Seu restaurante foi registrado com sucesso." 
+        });
         sessionStorage.removeItem("restaurant_id");
         navigate("/gerencia-restaurante");
       } else {
@@ -83,6 +139,12 @@ const CadastroHorarioRestaurantePage = () => {
       panelTitle="Horário de funcionamento"
       panelSubtitle="Defina os dias e horários de operação do seu restaurante."
     >
+      {isEditing && (
+        <button type="button" onClick={() => navigate("/gerencia-restaurante")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <ArrowLeft size={16} />
+          Voltar para o Gerenciamento
+        </button>
+      )}
       <h1 className="text-2xl font-extrabold text-foreground mb-2">Horários</h1>
       <p className="text-muted-foreground text-sm mb-6">Configure o funcionamento semanal</p>
 
@@ -132,7 +194,7 @@ const CadastroHorarioRestaurantePage = () => {
         </div>
 
         <button type="submit" disabled={loading} className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70">
-          {loading ? <Loader2 size={16} className="animate-spin" /> : (<>Cadastrar <ArrowRight size={16} /></>)}
+          {loading ? <Loader2 size={16} className="animate-spin" /> : (<>{isEditing ? "Salvar Alterações" : "Cadastrar"} <ArrowRight size={16} /></>)}
         </button>
       </form>
     </AuthLayout>

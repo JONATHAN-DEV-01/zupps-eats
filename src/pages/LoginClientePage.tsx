@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchApi } from "@/lib/api";
+import { formatPhone } from "@/lib/utils";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-login-cliente.jpg";
 
@@ -105,7 +106,7 @@ const LoginClientePage = () => {
             placeholder="(00) 00000-0000"
             aria-label="Telefone"
             value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
+            onChange={(e) => setTelefone(formatPhone(e.target.value))}
             disabled={loading !== null}
             className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50"
           />
