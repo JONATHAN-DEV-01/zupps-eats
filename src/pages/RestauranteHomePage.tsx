@@ -56,7 +56,7 @@ const RestauranteHomePage = () => {
     removeAuthToken();
     localStorage.removeItem("user_profile");
     sessionStorage.clear();
-    navigate("/home");
+    navigate("/");
   };
 
   if (loading) return (

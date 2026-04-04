@@ -1,10 +1,11 @@
-import { Building, CreditCard, MapPin, Phone, FileText, UtensilsCrossed, ArrowRight, Loader2, Mail, ArrowLeft } from "lucide-react";
+import { Building, CreditCard, MapPin, Phone, FileText, UtensilsCrossed, ArrowRight, Loader2, Mail, ArrowLeft, Home, Hash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, fetchApi } from "@/lib/api";
 import { formatPhone } from "@/lib/utils";
 import AuthLayout from "@/components/AuthLayout";
+import LocationPicker from "@/components/LocationPicker";
 import foodImage from "@/assets/food-cadastro-restaurante.jpg";
 
 const categorias = [
@@ -23,11 +24,81 @@ const CadastroDadosRestaurantePage = () => {
   const [nomeFantasia, setNomeFantasia] = useState(isEditing ? userProfile?.nome_fantasia || "" : "");
   const [razaoSocial, setRazaoSocial] = useState(isEditing ? userProfile?.razao_social || "" : "");
   const [cnpj, setCnpj] = useState(isEditing ? userProfile?.cnpj || "" : "");
-  const [endereco, setEndereco] = useState(isEditing ? userProfile?.endereco || "" : "");
   const [telefone, setTelefone] = useState(isEditing ? userProfile?.telefone || "" : "");
   const [descricao, setDescricao] = useState(isEditing ? userProfile?.descricao || "" : "");
   const [categoria, setCategoria] = useState(isEditing ? userProfile?.categoria || "" : "");
+  
+  const [address, setAddress] = useState({
+    logradouro: isEditing ? userProfile?.logradouro || "" : "",
+    bairro: isEditing ? userProfile?.bairro || "" : "",
+    cidade: isEditing ? userProfile?.cidade || "São Paulo" : "São Paulo",
+    estado: isEditing ? userProfile?.estado || "SP" : "SP",
+    numero: isEditing ? userProfile?.numero || "" : "",
+    cep: isEditing ? userProfile?.cep || "" : "",
+    sem_numero: isEditing ? userProfile?.sem_numero || false : false,
+    complemento: isEditing ? userProfile?.complemento || "" : "",
+    ponto_referencia: isEditing ? userProfile?.ponto_referencia || "" : "",
+  });
+
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
+
+  // Sync with latest API data
+  useEffect(() => {
+    const loadLatestData = async () => {
+      const restId = userProfile?.id || userProfile?.restaurante_id;
+      if (!isEditing || !restId) return;
+
+      setFetchingData(true);
+      try {
+        const response = await fetchApi(`/restaurantes?id=${restId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.length > 0) {
+            const rest = data[0];
+            setAddress({
+              logradouro: rest.logradouro || "",
+              bairro: rest.bairro || "",
+              cidade: rest.cidade || "São Paulo",
+              estado: rest.estado || "SP",
+              numero: rest.numero || "",
+              cep: rest.cep || "",
+              sem_numero: rest.sem_numero || false,
+              complemento: rest.complemento || "",
+              ponto_referencia: rest.ponto_referencia || "",
+            });
+            
+            // Sync email and telephone if they were updated elsewhere
+            if (rest.email) setEmail(rest.email);
+            if (rest.telefone) setTelefone(rest.telefone);
+            if (rest.nome_fantasia) setNomeFantasia(rest.nome_fantasia);
+            if (rest.razao_social) setRazaoSocial(rest.razao_social);
+
+            // Update localStorage
+            const updatedProfile = { ...userProfile, ...rest };
+            localStorage.setItem("user_profile", JSON.stringify(updatedProfile));
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar endereço atual", err);
+      } finally {
+        setFetchingData(false);
+      }
+    };
+    loadLatestData();
+  }, [isEditing, userProfile?.id, userProfile?.restaurante_id]);
+
+  const handleLocationSelect = (loc: any) => {
+    setAddress(prev => ({
+      ...prev,
+      logradouro: loc.logradouro || prev.logradouro,
+      bairro: loc.bairro || prev.bairro,
+      cidade: loc.cidade || prev.cidade,
+      estado: loc.estado || prev.estado,
+      numero: loc.numero || prev.numero,
+      cep: loc.cep || prev.cep,
+    }));
+  };
 
   const formatCnpj = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 14);
@@ -40,7 +111,10 @@ const CadastroDadosRestaurantePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !nomeFantasia || !razaoSocial || !cnpj || !endereco || !telefone || !categoria) return;
+    if (!email || !nomeFantasia || !razaoSocial || !cnpj || !telefone || !categoria || !address.logradouro) {
+      toast({ title: "Erro", description: "Preencha todos os campos obrigatórios.", variant: "destructive" });
+      return;
+    }
 
     // Save to session storage to be sent in the final step with the logo
     const restaurantData = {
@@ -48,7 +122,8 @@ const CadastroDadosRestaurantePage = () => {
       nome_fantasia: nomeFantasia,
       razao_social: razaoSocial,
       cnpj: cnpj.replace(/\D/g, ""),
-      endereco,
+      endereco: `${address.logradouro}, ${address.numero || "S/N"} - ${address.bairro}`,
+      ...address,
       telefone: telefone.replace(/\D/g, ""),
       descricao,
       categoria,
@@ -92,10 +167,72 @@ const CadastroDadosRestaurantePage = () => {
           <CreditCard size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input type="text" placeholder="CNPJ *" aria-label="CNPJ" required value={cnpj} onChange={(e) => setCnpj(formatCnpj(e.target.value))} disabled={loading} className={inputClass} />
         </div>
-        <div className="relative">
-          <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Endereço completo *" aria-label="Endereço" required value={endereco} onChange={(e) => setEndereco(e.target.value)} disabled={loading} className={inputClass} />
+
+        <div className="py-2">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-foreground flex items-center gap-2">
+              <MapPin size={16} className="text-primary" /> Endereço do Estabelecimento
+            </p>
+            {isEditing && (userProfile?.endereco) && !address.logradouro && (
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 flex items-center gap-1 animate-pulse">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                DADOS ANTIGOS
+              </span>
+            )}
+          </div>
+
+          {isEditing && userProfile?.endereco && (
+            <div className="mb-4 p-3 rounded-xl bg-muted/40 border border-border/50 group relative">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1 tracking-wider opacity-70">Endereço Atual Cadastrado</p>
+              <p className="text-sm font-semibold text-foreground leading-snug">{userProfile.endereco}</p>
+              <div className="absolute top-2 right-2 flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary/20" />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+              </div>
+            </div>
+          )}
+
+          <LocationPicker onLocationSelect={handleLocationSelect} />
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative">
+            <Home size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Rua *" required value={address.logradouro} onChange={(e) => setAddress({...address, logradouro: e.target.value})} disabled={loading} className={inputClass} />
+          </div>
+          <div className="relative">
+            <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Bairro *" required value={address.bairro} onChange={(e) => setAddress({...address, bairro: e.target.value})} disabled={loading} className={inputClass} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative">
+            <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Número *" required={!address.sem_numero} disabled={address.sem_numero || loading} value={address.numero} onChange={(e) => setAddress({...address, numero: e.target.value})} className={inputClass} />
+          </div>
+          <div className="relative">
+            <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="CEP *" required value={address.cep} onChange={(e) => setAddress({...address, cep: e.target.value})} disabled={loading} className={inputClass} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 px-1">
+          <input type="checkbox" id="sem_numero" checked={address.sem_numero} onChange={(e) => setAddress({...address, sem_numero: e.target.checked, numero: e.target.checked ? "" : address.numero})} />
+          <label htmlFor="sem_numero" className="text-xs text-muted-foreground cursor-pointer font-medium">Estabelecimento sem número oficial</label>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="relative">
+            <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Complemento" value={address.complemento} onChange={(e) => setAddress({...address, complemento: e.target.value})} disabled={loading} className={inputClass} />
+          </div>
+          <div className="relative">
+            <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Ponto de referência" value={address.ponto_referencia} onChange={(e) => setAddress({...address, ponto_referencia: e.target.value})} disabled={loading} className={inputClass} />
+          </div>
+        </div>
+
         <div className="relative">
           <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input type="tel" placeholder="Telefone *" aria-label="Telefone" required value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} disabled={loading} className={inputClass} />

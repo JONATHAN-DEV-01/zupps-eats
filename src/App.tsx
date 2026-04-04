@@ -3,7 +3,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
 import EmailPage from "./pages/EmailPage";
 import AuthEmailPage from "./pages/AuthEmailPage";
 import TelefonePage from "./pages/TelefonePage";
@@ -23,7 +22,9 @@ import CriarProdutoPage from "./pages/CriarProdutoPage";
 import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
 import ClienteHomePage from "./pages/ClienteHomePage";
 import ClientePerfilPage from "./pages/ClientePerfilPage";
+import ClienteRestaurantePage from "./pages/ClienteRestaurantePage";
 import RestauranteHomePage from "./pages/RestauranteHomePage";
+import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,9 +36,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          {/* Home */}
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<Index />} />
+          {/* Landing Page */}
+          <Route path="/" element={<Index />} />
 
           {/* Customer Registration */}
           <Route path="/email-cadastro-cliente" element={<EmailPage />} />
@@ -53,6 +53,7 @@ const App = () => (
           <Route path="/auth-login-cliente/:token" element={<AuthLoginClientePage />} />
           <Route path="/cliente-home" element={<ClienteHomePage />} />
           <Route path="/cliente-perfil" element={<ClientePerfilPage />} />
+          <Route path="/restaurante/:id" element={<ClienteRestaurantePage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />

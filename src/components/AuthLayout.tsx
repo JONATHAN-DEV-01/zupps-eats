@@ -39,7 +39,7 @@ const AuthLayout = ({ backgroundImage, panelTitle, panelSubtitle, children }: Au
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
-          <Link to="/home" className="flex items-center gap-2 mb-10 lg:hidden">
+          <Link to="/cliente-home" className="flex items-center gap-2 mb-10 lg:hidden">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-extrabold text-lg">Z</span>
             </div>

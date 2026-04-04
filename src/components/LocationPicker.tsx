@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 import { Loader2, MapPin, MapPinned } from 'lucide-react';
 
 const mapContainerStyle = {
@@ -13,7 +13,6 @@ const center = {
   lng: -46.6333,
 };
 
-// Utilizamos a biblioteca 'places' mas agora integraremos explicitamente com a versão NEW.
 const LIBRARIES: ("places")[] = ['places'];
 
 interface LocationPickerProps {
@@ -35,13 +34,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [marker, setMarker] = useState<google.maps.LatLngLiteral>(center);
+  const [markerPos, setMarkerPos] = useState<google.maps.LatLngLiteral>(center);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const advancedMarkerRef = useRef<any>(null);
 
   const onLoad = useCallback(function callback(map: google.maps.Map) {
     setMap(map);
@@ -50,6 +50,48 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
   const onUnmount = useCallback(function callback(map: google.maps.Map) {
     setMap(null);
   }, []);
+
+  // Gerenciamento do AdvancedMarkerElement (Substitui o Marker legado)
+  useEffect(() => {
+    if (!isLoaded || !map) return;
+
+    let marker: any = null;
+
+    const initMarker = async () => {
+      try {
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker") as any;
+        
+        // Remove marker anterior se existir (limpeza extra)
+        if (advancedMarkerRef.current) {
+          advancedMarkerRef.current.map = null;
+        }
+
+        marker = new AdvancedMarkerElement({
+          map,
+          position: markerPos,
+          title: "Localização selecionada",
+        });
+        
+        advancedMarkerRef.current = marker;
+      } catch (error) {
+        console.error("Erro ao inicializar AdvancedMarkerElement:", error);
+      }
+    };
+
+    if (!advancedMarkerRef.current) {
+      initMarker();
+    } else {
+       advancedMarkerRef.current.position = markerPos;
+    }
+
+    return () => {
+      // Cleanup ao desmontar
+      if (advancedMarkerRef.current) {
+        advancedMarkerRef.current.map = null;
+        advancedMarkerRef.current = null;
+      }
+    };
+  }, [isLoaded, map, markerPos]);
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
@@ -72,12 +114,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
     const fetchSuggestions = async () => {
       try {
         setLoadingSuggestions(true);
-        // Usa a nova API de Places
         const { AutocompleteSuggestion } = await google.maps.importLibrary("places") as any;
         
         const request = {
           input: query,
-          includedRegionCodes: ["br"], // Opcional, forçar Brasil se for seu público alvo
+          includedRegionCodes: ["br"],
         };
         
         const response = await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
@@ -107,12 +148,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
       const { Place } = await google.maps.importLibrary("places") as any;
       const place = new Place({ id: suggestion.placePrediction.placeId });
       
-      // Busca loc e componentes de endereço
       await place.fetchFields({ fields: ['location', 'addressComponents'] });
       
       if (place.location) {
         const location = { lat: place.location.lat(), lng: place.location.lng() };
-        setMarker(location);
+        setMarkerPos(location);
         map?.panTo(location);
         map?.setZoom(17);
       }
@@ -127,8 +167,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
         cep: '',
       };
 
-      // Tratativa principal: iterar sobre os componentes e garantir preenchimento. 
-      // Se não vier, continuará garantido como "" (string vazia).
       addressComponents.forEach((component: any) => {
         const types = component.types;
         if (types.includes('route')) address.logradouro = component.longText;
@@ -171,7 +209,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
           <Loader2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
 
-        {/* Dropdown customizado */}
         {showDropdown && suggestions.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden max-h-60 overflow-y-auto">
             {suggestions.map((suggestion, idx) => (
@@ -196,17 +233,16 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect }) => 
       
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        center={marker}
+        center={markerPos}
         zoom={14}
         onLoad={onLoad}
         onUnmount={onUnmount}
         options={{
           disableDefaultUI: true,
           zoomControl: true,
+          mapId: 'DEMO_MAP_ID', // ID GENÉRICO PARA ATIVAR ADVANCED MARKERS
         }}
-      >
-        <Marker position={marker} />
-      </GoogleMap>
+      />
     </div>
   );
 };

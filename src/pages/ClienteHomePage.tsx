@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag } from "lucide-react";
+import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag, Store } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { getUserProfile, removeAuthToken } from "@/lib/api";
+import { getUserProfile, removeAuthToken, fetchApi, API_BASE_URL } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const quickCategories = [
   { emoji: "🍕", label: "Pizza" },
@@ -12,22 +14,39 @@ const quickCategories = [
   { emoji: "🍰", label: "Doces" },
 ];
 
-const recentPlaces = [
-  { name: "Pizzaria Bella", category: "Pizzaria", rating: 4.8, time: "25-35 min", image: "🍕" },
-  { name: "Burger House", category: "Hambúrguer", rating: 4.6, time: "20-30 min", image: "🍔" },
-  { name: "Sushi Garden", category: "Japonesa", rating: 4.9, time: "35-45 min", image: "🍣" },
-];
-
 const ClienteHomePage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const user = getUserProfile();
   const firstName = user?.nome?.split(" ")[0] || "Cliente";
+
+  const [restaurantes, setRestaurantes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRestaurantes = async () => {
+      try {
+        const response = await fetchApi('/restaurantes');
+        if (response.ok) {
+          const data = await response.json();
+          setRestaurantes(data);
+        } else {
+          console.error("Erro ao carregar restaurantes");
+        }
+      } catch (error) {
+        console.error("Erro de rede ao carregar restaurantes", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadRestaurantes();
+  }, []);
 
   const handleLogout = () => {
     removeAuthToken();
     localStorage.removeItem("user_profile");
     sessionStorage.clear();
-    navigate("/home");
+    navigate("/");
   };
 
   return (
@@ -35,7 +54,7 @@ const ClienteHomePage = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
         <div className="container flex items-center justify-between h-16">
-          <Link to="/home" className="flex items-center gap-2">
+          <Link to="/cliente-home" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-extrabold text-lg">Z</span>
             </div>
@@ -133,31 +152,42 @@ const ClienteHomePage = () => {
             <button className="text-xs font-semibold text-primary">Ver todos</button>
           </div>
           <div className="space-y-3">
-            {recentPlaces.map((place) => (
-              <div
-                key={place.name}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all cursor-pointer"
-              >
-                <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center text-2xl flex-shrink-0">
-                  {place.image}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-foreground truncate">{place.name}</h3>
-                  <p className="text-xs text-muted-foreground">{place.category}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                      <Star size={12} className="text-secondary fill-secondary" /> {place.rating}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock size={12} /> {place.time}
-                    </span>
+            {loading ? (
+              <p className="text-sm text-center text-muted-foreground py-4">Carregando restaurantes...</p>
+            ) : restaurantes.length > 0 ? (
+              restaurantes.map((place) => (
+                <div
+                  key={place.id}
+                  onClick={() => navigate(`/restaurante/${place.id}`)}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all cursor-pointer"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {place.logotipo ? (
+                      <img src={`${API_BASE_URL}/${place.logotipo.replace(/\\/g, '/')}`} alt={place.nome_fantasia} className="w-full h-full object-cover" />
+                    ) : (
+                      <Store size={24} className="text-muted-foreground" />
+                    )}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-foreground truncate">{place.nome_fantasia}</h3>
+                    <p className="text-xs text-muted-foreground">{place.categoria?.nome || "Restaurante"}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                        <Star size={12} className="text-secondary fill-secondary" /> {place.rating || "4.5"}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock size={12} /> {place.time || "30-45 min"}
+                      </span>
+                    </div>
+                  </div>
+                  <button className="p-2 rounded-xl hover:bg-muted transition-colors" onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                    <Heart size={18} className="text-muted-foreground" />
+                  </button>
                 </div>
-                <button className="p-2 rounded-xl hover:bg-muted transition-colors">
-                  <Heart size={18} className="text-muted-foreground" />
-                </button>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-center text-muted-foreground py-4">Nenhum restaurante aberto no momento.</p>
+            )}
           </div>
         </motion.div>
 

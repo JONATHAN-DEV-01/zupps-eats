@@ -36,7 +36,7 @@ const AuthEmailPage = () => {
         if (data.proxima_etapa === "PHONE") navigate("/telefone-cadastro-cliente");
         else if (data.proxima_etapa === "DATA") navigate("/cadastro-cliente");
         else if (data.proxima_etapa === "ADDRESS") navigate("/cadastro-endereco-cliente");
-        else navigate("/home");
+        else navigate("/cliente-home");
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Código inválido.", variant: "destructive" });
       }

@@ -71,7 +71,7 @@ const EnderecoPage = () => {
         if (data.user) {
           setUserProfile(data.user);
         }
-        navigate("/home");
+        navigate("/cliente-home");
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Erro ao salvar endereço.", variant: "destructive" });
       }

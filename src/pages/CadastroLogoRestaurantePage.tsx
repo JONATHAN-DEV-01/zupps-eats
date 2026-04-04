@@ -1,6 +1,6 @@
 import { ImageIcon, ArrowRight, Loader2, Upload, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
@@ -24,8 +24,39 @@ const CadastroLogoRestaurantePage = () => {
     isEditing && userProfile?.logotipo ? `${API_BASE_URL}/${userProfile.logotipo.replace(/\\/g, '/')}` : null
   );
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
   const coverRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  // Sync with latest API data on mount
+  useEffect(() => {
+    const loadLatestData = async () => {
+      const restId = userProfile?.id || userProfile?.restaurante_id;
+      if (!isEditing || !restId) return;
+
+      setFetchingData(true);
+      try {
+        const response = await fetchApi(`/restaurantes?id=${restId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.length > 0) {
+            const rest = data[0];
+            if (rest.logotipo) setLogoPreview(`${API_BASE_URL}/${rest.logotipo.replace(/\\/g, '/')}`);
+            if (rest.capa) setCoverPreview(`${API_BASE_URL}/${rest.capa.replace(/\\/g, '/')}`);
+            
+            // Update localStorage to keep it fresh
+            const updatedProfile = { ...userProfile, ...rest };
+            localStorage.setItem("user_profile", JSON.stringify(updatedProfile));
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao atualizar dados prévios", err);
+      } finally {
+        setFetchingData(false);
+      }
+    };
+    loadLatestData();
+  }, [isEditing, userProfile?.id, userProfile?.restaurante_id]);
 
   const handleFile = (file: File | null, type: "cover" | "logo") => {
     if (!file) return;
@@ -64,6 +95,17 @@ const CadastroLogoRestaurantePage = () => {
         formData.append("razao_social", restaurantData.razao_social);
         formData.append("cnpj", restaurantData.cnpj);
         formData.append("endereco", restaurantData.endereco);
+        // Structured address fields
+        if (restaurantData.logradouro) formData.append("logradouro", restaurantData.logradouro);
+        if (restaurantData.bairro) formData.append("bairro", restaurantData.bairro);
+        if (restaurantData.cidade) formData.append("cidade", restaurantData.cidade);
+        if (restaurantData.estado) formData.append("estado", restaurantData.estado);
+        if (restaurantData.numero) formData.append("numero", restaurantData.numero);
+        if (restaurantData.cep) formData.append("cep", restaurantData.cep);
+        if (restaurantData.ponto_referencia) formData.append("ponto_referencia", restaurantData.ponto_referencia);
+        if (restaurantData.sem_numero !== undefined) formData.append("sem_numero", String(restaurantData.sem_numero));
+        if (restaurantData.complemento) formData.append("complemento", restaurantData.complemento);
+
         formData.append("telefone", restaurantData.telefone);
         if (restaurantData.descricao) formData.append("descricao", restaurantData.descricao);
         formData.append("categoria_id", restaurantData.categoria);
@@ -140,11 +182,11 @@ const CadastroLogoRestaurantePage = () => {
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
           <label className="text-sm font-semibold text-foreground mb-2 block">Imagem de Capa</label>
-          <UploadArea label="Clique para enviar a capa" preview={coverPreview} inputRef={coverRef as React.RefObject<HTMLInputElement>} onFile={(f) => handleFile(f, "cover")} />
+          <UploadArea label={fetchingData ? "Carregando..." : "Clique para enviar a capa"} preview={coverPreview} inputRef={coverRef as React.RefObject<HTMLInputElement>} onFile={(f) => handleFile(f, "cover")} />
         </div>
         <div>
           <label className="text-sm font-semibold text-foreground mb-2 block">Logo</label>
-          <UploadArea label="Clique para enviar o logo" preview={logoPreview} inputRef={logoRef as React.RefObject<HTMLInputElement>} onFile={(f) => handleFile(f, "logo")} />
+          <UploadArea label={fetchingData ? "Carregando..." : "Clique para enviar o logo"} preview={logoPreview} inputRef={logoRef as React.RefObject<HTMLInputElement>} onFile={(f) => handleFile(f, "logo")} />
         </div>
 
         <button type="submit" disabled={loading} className="w-full h-13 rounded-xl gradient-primary text-primary-foreground font-bold text-sm shadow-float hover:opacity-95 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70">

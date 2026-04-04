@@ -7,7 +7,7 @@ import { logout } from "@/lib/api";
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const isHome = location.pathname === "/home" || location.pathname === "/";
+  const isHome = location.pathname === "/cliente-home" || location.pathname === "/";
   
   const [user, setUser] = useState<any>(null);
 
@@ -32,7 +32,7 @@ const Navbar = () => {
     >
       <div className="container flex items-center justify-between h-16">
         <div className="flex items-center gap-4">
-          <Link to="/home" className="flex items-center gap-2">
+          <Link to="/cliente-home" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-extrabold text-lg">Z</span>
             </div>
