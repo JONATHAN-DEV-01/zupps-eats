@@ -2,7 +2,7 @@ import { Mail, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL, fetchApi } from "@/lib/api";
+import { API_BASE_URL, fetchApi, setAuthToken, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-login-restaurante.jpg";
 
