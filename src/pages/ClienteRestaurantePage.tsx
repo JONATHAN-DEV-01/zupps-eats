@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Package, Store } from "lucide-react";
+import { ArrowLeft, Package, Store, Search, X } from "lucide-react";
 import { fetchApi, API_BASE_URL } from "@/lib/api";
 
 const ClienteRestaurantePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-    const [produtos, setProdutos] = useState<any[]>([]);
+  const [produtos, setProdutos] = useState<any[]>([]);
   const [restaurante, setRestaurante] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Estado para a busca no cardápio
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
@@ -22,6 +25,7 @@ const ClienteRestaurantePage = () => {
 
         if (prodRes.ok) {
           const data = await prodRes.json();
+          // Mantemos apenas os itens ativos no cardápio do cliente
           setProdutos(data.filter((p: any) => p.disponivel !== false));
         }
 
@@ -37,6 +41,12 @@ const ClienteRestaurantePage = () => {
     };
     if (id) loadData();
   }, [id]);
+
+  // Lógica de filtragem de produtos
+  const filteredProdutos = produtos.filter((p) => 
+    p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.descricao && p.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -68,7 +78,7 @@ const ClienteRestaurantePage = () => {
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 mb-8"
+            className="flex items-center gap-4 mb-6"
           >
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-muted flex items-center justify-center border border-border shadow-sm flex-shrink-0">
               {restaurante.logotipo ? (
@@ -88,13 +98,35 @@ const ClienteRestaurantePage = () => {
           </motion.div>
         )}
 
-        <h2 className="text-sm font-bold text-foreground mb-4 uppercase tracking-wider opacity-60">Escolha seus itens</h2>
+        {/* Campo de Busca no Cardápio */}
+        <div className="relative mb-8">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar no cardápio..."
+            className="w-full h-11 pl-11 pr-11 rounded-xl bg-card border border-border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <h2 className="text-sm font-bold text-foreground mb-4 uppercase tracking-wider opacity-60">
+          {searchTerm ? `Resultados para "${searchTerm}"` : "Escolha seus itens"}
+        </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {loading ? (
             <p className="text-sm text-muted-foreground py-4 w-full text-center sm:col-span-2">Carregando cardápio...</p>
-          ) : produtos.length > 0 ? (
-            produtos.map((produto) => (
+          ) : filteredProdutos.length > 0 ? (
+            filteredProdutos.map((produto) => (
               <motion.div
                 key={produto.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -128,7 +160,19 @@ const ClienteRestaurantePage = () => {
               </motion.div>
             ))
           ) : (
-            <p className="text-sm text-center text-muted-foreground py-8 w-full sm:col-span-2">Nenhum produto disponível neste restaurante no momento.</p>
+            <div className="py-12 w-full text-center sm:col-span-2 border-2 border-dashed border-border rounded-3xl">
+               <Package size={32} className="mx-auto text-muted-foreground mb-2 opacity-20" />
+               <p className="text-sm font-bold text-foreground">Nenhum item encontrado</p>
+               <p className="text-xs text-muted-foreground">Tente outro nome ou limpe a busca.</p>
+               {searchTerm && (
+                 <button 
+                   onClick={() => setSearchTerm("")}
+                   className="mt-4 text-xs font-bold text-primary underline"
+                 >
+                   Ver cardápio completo
+                 </button>
+               )}
+            </div>
           )}
         </div>
       </div>

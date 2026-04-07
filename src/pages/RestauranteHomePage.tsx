@@ -3,7 +3,8 @@ import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp,
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { fetchApi, getUserProfile, removeAuthToken } from "@/lib/api";
+// Importamos o API_BASE_URL para padronizar
+import { fetchApi, getUserProfile, removeAuthToken, API_BASE_URL } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -20,8 +21,12 @@ const RestauranteHomePage = () => {
     const loadRestaurant = async () => {
       if (!user) { navigate("/login-restaurante"); return; }
       try {
-        const response = await fetchApi(`/restaurantes?usuario_id=${user.id}`);
+        // Garantimos que pega o ID correto dependendo de como o objeto user foi salvo
+        const targetId = user.id || user.restaurante_id;
+        
+        const response = await fetchApi(`/restaurantes?id=${targetId}`);
         const data = await response.json();
+        
         if (response.ok && data.length > 0) {
           setRestaurant(data[0]);
           setActive(data[0].ativo);
@@ -39,6 +44,7 @@ const RestauranteHomePage = () => {
     if (!restaurant) return;
     setUpdatingStatus(true);
     try {
+      // Como o backend usa request.get_json() para esta rota específica, enviamos JSON normalmente!
       const response = await fetchApi(`/restaurantes/${restaurant.id}/status`, {
         method: "PATCH",
         body: JSON.stringify({ ativo: checked }),
@@ -84,7 +90,7 @@ const RestauranteHomePage = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
         <div className="container flex items-center justify-between h-16">
-          <Link to="/home" className="flex items-center gap-2">
+          <Link to="/restaurante-home" className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <span className="text-primary-foreground font-extrabold text-lg">Z</span>
             </div>
@@ -102,9 +108,10 @@ const RestauranteHomePage = () => {
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted flex items-center justify-center flex-shrink-0 border border-border">
                 {restaurant?.logotipo ? (
-                  <img src={`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/uploads/${restaurant.logotipo}`} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
+                  // Tratamento corrigido para o caminho da imagem usando API_BASE_URL e replace
+                  <img src={`${API_BASE_URL}/${restaurant.logotipo.replace(/\\/g, '/')}`} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
                 ) : (
                   <Store size={24} className="text-muted-foreground" />
                 )}
