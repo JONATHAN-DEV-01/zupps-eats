@@ -2,7 +2,7 @@ import { Mail, ArrowRight, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL, fetchApi } from "@/lib/api";
+import { API_BASE_URL, fetchApi, setAuthToken, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-login-restaurante.jpg";
 
@@ -12,28 +12,31 @@ const LoginRestaurantePage = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const MOCK_RESTAURANT = {
+    id: "62d7dbe0-1de6-43c5-976e-6f6b233c461a",
+    nome_fantasia: "Bar",
+    razao_social: "Bar",
+    email: "demo@restaurante.com",
+    cnpj: "15888901000139",
+    telefone: "11982180839",
+    categoria: "Hamburgueria",
+    endereco: "Rua Domingos Gonçalves da Silva N20",
+    ativo: true,
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
+    // Mock login: qualquer email funciona
     setLoading(true);
-    try {
-      const response = await fetchApi("/auth/restaurant/request-otp", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        sessionStorage.setItem("restaurant_login_email", email);
-        navigate("/auth-login-restaurante");
-      } else {
-        toast({ title: "Erro", description: data.message || data.error || "Erro ao enviar código.", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Erro de conexão", description: "Não foi possível conectar ao servidor.", variant: "destructive" });
-    } finally {
+    setTimeout(() => {
+      setAuthToken("mock_token_restaurante");
+      setUserProfile({ ...MOCK_RESTAURANT, email });
+      toast({ title: "Login mockado", description: `Bem-vindo, ${MOCK_RESTAURANT.nome_fantasia}!` });
+      navigate("/restaurante-home");
       setLoading(false);
-    }
+    }, 800);
   };
 
   return (
