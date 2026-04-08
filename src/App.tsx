@@ -24,6 +24,7 @@ import ClienteHomePage from "./pages/ClienteHomePage";
 import ClientePerfilPage from "./pages/ClientePerfilPage";
 import ClienteRestaurantePage from "./pages/ClienteRestaurantePage";
 import RestauranteHomePage from "./pages/RestauranteHomePage";
+import BuscaPage from "./pages/BuscaPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -54,6 +55,7 @@ const App = () => (
           <Route path="/cliente-home" element={<ClienteHomePage />} />
           <Route path="/cliente-perfil" element={<ClientePerfilPage />} />
           <Route path="/restaurante/:id" element={<ClienteRestaurantePage />} />
+          <Route path="/busca" element={<BuscaPage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />

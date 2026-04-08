@@ -140,10 +140,24 @@ const ClienteRestaurantePage = () => {
                       {produto.descricao}
                     </p>
                   )}
-                  <div className="mt-auto pt-2">
-                     <span className="font-extrabold text-sm text-primary">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.preco)}
-                    </span>
+                <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
+                    {produto.em_promocao ? (
+                      <>
+                        <span className="text-xs line-through text-muted-foreground">
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco_original)}
+                        </span>
+                        <span className="font-extrabold text-sm text-primary">
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco_promocional)}
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
+                          OFERTA
+                        </span>
+                      </>
+                    ) : (
+                      <span className="font-extrabold text-sm text-primary">
+                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="w-20 h-20 rounded-xl bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border shadow-sm">
