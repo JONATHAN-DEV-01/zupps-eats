@@ -2,7 +2,7 @@ import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, setAuthToken, setUserProfile } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-auth-email.jpg";
 
@@ -33,6 +33,11 @@ const AuthEmailPage = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // 1. Salva o token e o usuário retornados pelo back-end
+        if (data.token) setAuthToken(data.token);
+        if (data.user) setUserProfile(data.user);
+
+        // 2. Faz o roteamento
         if (data.proxima_etapa === "PHONE") navigate("/telefone-cadastro-cliente");
         else if (data.proxima_etapa === "DATA") navigate("/cadastro-cliente");
         else if (data.proxima_etapa === "ADDRESS") navigate("/cadastro-endereco-cliente");

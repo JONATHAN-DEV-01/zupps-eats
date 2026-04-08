@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag, Store, ChevronDown } from "lucide-react";
+import { Search, MapPin, Clock, Star, Heart, LogOut, User, ShoppingBag, Store, ChevronDown, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { getUserProfile, removeAuthToken, fetchApi, API_BASE_URL } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -19,8 +19,16 @@ const ClienteHomePage = () => {
   const { toast } = useToast();
   const user = getUserProfile();
   const firstName = user?.nome?.split(" ")[0] || "Cliente";
+  
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const [restaurantes, setRestaurantes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados para Filtros
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -32,9 +40,6 @@ const ClienteHomePage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const [restaurantes, setRestaurantes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const loadRestaurantes = async () => {
       try {
@@ -42,8 +47,6 @@ const ClienteHomePage = () => {
         if (response.ok) {
           const data = await response.json();
           setRestaurantes(data);
-        } else {
-          console.error("Erro ao carregar restaurantes");
         }
       } catch (error) {
         console.error("Erro de rede ao carregar restaurantes", error);
@@ -60,6 +63,17 @@ const ClienteHomePage = () => {
     sessionStorage.clear();
     navigate("/");
   };
+
+  // Lógica de Filtragem
+  const filteredRestaurantes = restaurantes.filter((place) => {
+    const matchesSearch = place.nome_fantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         place.categoria?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = !activeCategory || 
+                           place.categoria?.nome?.toLowerCase() === activeCategory.toLowerCase();
+
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,13 +107,12 @@ const ClienteHomePage = () => {
                     initial={{ opacity: 0, y: 6, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.97 }}
-                    transition={{ duration: 0.15 }}
                     className="absolute right-0 mt-2 w-52 rounded-xl bg-card border border-border shadow-lg overflow-hidden z-50"
                   >
-                    <button onClick={() => { setMenuOpen(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                    <button onClick={() => setMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
                       <ShoppingBag size={16} className="text-primary" /> Meus Pedidos
                     </button>
-                    <button onClick={() => { setMenuOpen(false); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                    <button onClick={() => setMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
                       <Heart size={16} className="text-destructive" /> Favoritos
                     </button>
                     <button onClick={() => { setMenuOpen(false); navigate("/cliente-perfil"); }} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors">
@@ -131,7 +144,7 @@ const ClienteHomePage = () => {
           </div>
         </motion.div>
 
-        {/* Search */}
+        {/* Search Input Integrado */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -142,28 +155,55 @@ const ClienteHomePage = () => {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Procurar restaurantes, mercados, cozinhas..."
-              className="w-full h-12 pl-11 pr-4 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm font-medium shadow-card focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              className="w-full h-12 pl-11 pr-12 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm font-medium shadow-card focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </motion.div>
 
-        {/* Categories */}
+        {/* Categories Filter Integrado */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
           className="mt-6"
         >
-          <h2 className="text-sm font-bold text-foreground mb-3">Categorias</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-foreground">Categorias</h2>
+            {activeCategory && (
+              <button 
+                onClick={() => setActiveCategory(null)}
+                className="text-[10px] font-bold text-primary uppercase tracking-wider"
+              >
+                Limpar Filtro
+              </button>
+            )}
+          </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
             {quickCategories.map((cat) => (
               <button
                 key={cat.label}
-                className="flex flex-col items-center gap-1.5 min-w-[64px] px-3 py-3 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all"
+                onClick={() => setActiveCategory(activeCategory === cat.label ? null : cat.label)}
+                className={`flex flex-col items-center gap-1.5 min-w-[64px] px-3 py-3 rounded-2xl border transition-all ${
+                  activeCategory === cat.label 
+                  ? "bg-primary/10 border-primary shadow-sm scale-95" 
+                  : "bg-card border-border shadow-card hover:shadow-card-hover hover:-translate-y-0.5"
+                }`}
               >
                 <span className="text-2xl">{cat.emoji}</span>
-                <span className="text-[11px] font-semibold text-foreground whitespace-nowrap">{cat.label}</span>
+                <span className={`text-[11px] font-semibold whitespace-nowrap ${activeCategory === cat.label ? "text-primary" : "text-foreground"}`}>
+                  {cat.label}
+                </span>
               </button>
             ))}
           </div>
@@ -183,7 +223,7 @@ const ClienteHomePage = () => {
           <p className="text-xs opacity-90">Use o código <strong>ZUPPS50</strong> no checkout</p>
         </motion.div>
 
-        {/* Recent / Popular */}
+        {/* Listagem com Filtros Aplicados */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -191,20 +231,28 @@ const ClienteHomePage = () => {
           className="mt-6"
         >
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-foreground">Populares perto de você</h2>
-            <button className="text-xs font-semibold text-primary">Ver todos</button>
+            <h2 className="text-sm font-bold text-foreground">
+              {activeCategory ? `Resultados para "${activeCategory}"` : "Populares perto de você"}
+            </h2>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase">
+              {filteredRestaurantes.length} Encontrados
+            </span>
           </div>
+
           <div className="space-y-3">
             {loading ? (
-              <p className="text-sm text-center text-muted-foreground py-4">Carregando restaurantes...</p>
-            ) : restaurantes.length > 0 ? (
-              restaurantes.map((place) => (
+              <div className="flex flex-col items-center py-10 gap-2">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-muted-foreground">Buscando sabores...</p>
+              </div>
+            ) : filteredRestaurantes.length > 0 ? (
+              filteredRestaurantes.map((place) => (
                 <div
                   key={place.id}
                   onClick={() => navigate(`/restaurante/${place.id}`)}
                   className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover transition-all cursor-pointer"
                 >
-                  <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0">
+                  <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0 border border-border/50">
                     {place.logotipo ? (
                       <img src={`${API_BASE_URL}/${place.logotipo.replace(/\\/g, '/')}`} alt={place.nome_fantasia} className="w-full h-full object-cover" />
                     ) : (
@@ -229,7 +277,19 @@ const ClienteHomePage = () => {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-center text-muted-foreground py-4">Nenhum restaurante aberto no momento.</p>
+              <div className="text-center py-10 bg-muted/20 rounded-3xl border border-dashed border-border">
+                <Store size={32} className="mx-auto text-muted-foreground mb-2 opacity-20" />
+                <p className="text-sm font-bold text-foreground">Nenhum restaurante encontrado</p>
+                <p className="text-xs text-muted-foreground">Tente ajustar seus filtros ou busca.</p>
+                {(searchTerm || activeCategory) && (
+                  <button 
+                    onClick={() => { setSearchTerm(""); setActiveCategory(null); }}
+                    className="mt-4 text-xs font-bold text-primary underline"
+                  >
+                    Ver todos os restaurantes
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </motion.div>

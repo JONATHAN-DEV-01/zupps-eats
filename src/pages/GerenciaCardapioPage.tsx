@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Edit2, Trash2, Package, Loader2, ArrowLeft, ToggleLeft, ToggleRight, Eye, EyeOff } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Package, Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { API_BASE_URL, fetchApi } from "@/lib/api";
@@ -31,7 +31,6 @@ const GerenciaCardapioPage = () => {
   useEffect(() => {
     const loadProducts = async () => {
       if (!restaurantId) {
-        // Use mock data when no restaurant is identified
         setProducts(MOCK_PRODUCTS);
         setLoading(false);
         return;
@@ -73,16 +72,23 @@ const GerenciaCardapioPage = () => {
   const handleToggleDisponivel = async (product: any) => {
     setTogglingId(product.id);
     try {
+      // Usando FormData no lugar do JSON para o backend Python conseguir ler
+      const formData = new FormData();
+      formData.append("disponivel", String(!product.disponivel));
+
       const response = await fetchApi(`/produtos/${product.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ disponivel: !product.disponivel }),
+        body: formData,
       });
+
       if (response.ok) {
         setProducts(products.map(p => p.id === product.id ? { ...p, disponivel: !p.disponivel } : p));
         toast({ title: product.disponivel ? "Produto desativado" : "Produto ativado" });
+      } else {
+        toast({ title: "Erro ao atualizar status", variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erro", variant: "destructive" });
+      toast({ title: "Erro de conexão", variant: "destructive" });
     } finally {
       setTogglingId(null);
     }
