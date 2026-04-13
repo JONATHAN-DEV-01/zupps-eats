@@ -31,6 +31,7 @@ import {
   RestauranteItem,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import FloatingCartButton from "@/components/FloatingCartButton";
 
 const ClienteHomePage = () => {
   const navigate = useNavigate();
@@ -507,6 +508,7 @@ const ClienteHomePage = () => {
 
         <div className="pb-8" />
       </div>
+      <FloatingCartButton />
     </div>
   );
 };

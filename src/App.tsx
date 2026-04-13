@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { CartProvider } from "@/contexts/CartContext";
+import CartConflictModal from "@/components/CartConflictModal";
 import EmailPage from "./pages/EmailPage";
 import AuthEmailPage from "./pages/AuthEmailPage";
 import TelefonePage from "./pages/TelefonePage";
@@ -25,6 +27,7 @@ import ClientePerfilPage from "./pages/ClientePerfilPage";
 import ClienteRestaurantePage from "./pages/ClienteRestaurantePage";
 import RestauranteHomePage from "./pages/RestauranteHomePage";
 import BuscaPage from "./pages/BuscaPage";
+import CarrinhoPage from "./pages/CarrinhoPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -33,8 +36,10 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <CartProvider>
       <Toaster />
       <Sonner />
+      <CartConflictModal />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* Landing Page */}
@@ -56,6 +61,7 @@ const App = () => (
           <Route path="/cliente-perfil" element={<ClientePerfilPage />} />
           <Route path="/restaurante/:id" element={<ClienteRestaurantePage />} />
           <Route path="/busca" element={<BuscaPage />} />
+          <Route path="/carrinho" element={<CarrinhoPage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />
@@ -77,6 +83,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      </CartProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

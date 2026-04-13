@@ -7,6 +7,7 @@ import { fetchTodasCategorias, Categoria } from "@/lib/api";
 import { BuscaGlobalResults } from "@/components/BuscaGlobalResults";
 import { FallbackSugestoes } from "@/components/FallbackSugestoes";
 import { useState } from "react";
+import FloatingCartButton from "@/components/FloatingCartButton";
 
 /**
  * Página de busca global — RF-01 ao RF-05 Req.6 + RF-03 Req.7.
@@ -185,6 +186,7 @@ const BuscaPage = () => {
           </motion.div>
         )}
       </div>
+      <FloatingCartButton />
     </div>
   );
 };
