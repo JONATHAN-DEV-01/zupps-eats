@@ -32,6 +32,7 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import FloatingCartButton from "@/components/FloatingCartButton";
+import HeaderCartButton from "@/components/HeaderCartButton";
 
 const ClienteHomePage = () => {
   const navigate = useNavigate();
@@ -190,6 +191,7 @@ const ClienteHomePage = () => {
               <MapPin size={14} className="text-primary" />
               <span className="hidden sm:inline">Localização</span>
             </button>
+            <HeaderCartButton />
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
