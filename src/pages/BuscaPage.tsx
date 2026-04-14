@@ -8,6 +8,7 @@ import { BuscaGlobalResults } from "@/components/BuscaGlobalResults";
 import { FallbackSugestoes } from "@/components/FallbackSugestoes";
 import { useState } from "react";
 import FloatingCartButton from "@/components/FloatingCartButton";
+import HeaderCartButton from "@/components/HeaderCartButton";
 
 /**
  * Página de busca global — RF-01 ao RF-05 Req.6 + RF-03 Req.7.
@@ -71,6 +72,7 @@ const BuscaPage = () => {
               </button>
             )}
           </div>
+          <HeaderCartButton />
         </div>
       </header>
 
