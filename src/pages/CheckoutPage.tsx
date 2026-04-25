@@ -19,7 +19,7 @@ import { useCart } from "@/contexts/CartContext";
 import {
   CartaoTokenizado,
   HistoricoTransacao,
-  StatusPagamento,
+  
   formatCentavos,
   formatCVV,
   formatNumeroCartao,
