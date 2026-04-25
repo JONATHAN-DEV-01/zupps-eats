@@ -225,6 +225,12 @@ const ClienteHomePage = () => {
                       <ShoppingBag size={16} className="text-primary" /> Meus Pedidos
                     </button>
                     <button
+                      onClick={() => { setMenuOpen(false); navigate("/meus-pedidos"); }}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <ShoppingBag size={16} className="text-primary" /> Meus Pedidos
+                    </button>
+                    <button
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                     >
