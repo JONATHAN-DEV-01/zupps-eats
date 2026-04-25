@@ -6,6 +6,7 @@ import { fetchApi, API_BASE_URL } from "@/lib/api";
 import { useCart, CartRestaurant, CartAdditional } from "@/contexts/CartContext";
 import FloatingCartButton from "@/components/FloatingCartButton";
 import { useToast } from "@/hooks/use-toast";
+import { mockRestaurant, mockProdutos, MOCK_RESTAURANT_ID } from "@/lib/mockRestaurant";
 
 // Mock additionals for demo
 const MOCK_ADICIONAIS: CartAdditional[] = [
@@ -39,6 +40,13 @@ const ClienteRestaurantePage = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      // Atalho para o restaurante mockado de testes
+      if (id === MOCK_RESTAURANT_ID) {
+        setRestaurante(mockRestaurant);
+        setProdutos(mockProdutos);
+        setLoading(false);
+        return;
+      }
       try {
         const [prodRes, restRes] = await Promise.all([
           fetchApi(`/produtos?restaurante_id=${id}`),
