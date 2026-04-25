@@ -59,7 +59,6 @@ const CheckoutPage = () => {
 
   // Payment processing
   const [processing, setProcessing] = useState(false);
-  const [forcedStatus, setForcedStatus] = useState<StatusPagamento | undefined>(undefined);
   const [resultado, setResultado] = useState<HistoricoTransacao | null>(null);
 
   useEffect(() => {
