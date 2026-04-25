@@ -364,32 +364,6 @@ const CheckoutPage = () => {
           </div>
         </section>
 
-        {/* Test status switcher */}
-        <section className="rounded-2xl bg-muted/40 border border-dashed border-border p-3">
-          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-            Modo teste — forçar status
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {([
-              { v: undefined, label: "Aleatório" },
-              { v: "aprovado", label: "Aprovado" },
-              { v: "recusado", label: "Recusado" },
-              { v: "pendente", label: "Pendente" },
-            ] as const).map((opt) => (
-              <button
-                key={opt.label}
-                onClick={() => setForcedStatus(opt.v as StatusPagamento | undefined)}
-                className={`h-8 rounded-lg text-[11px] font-bold transition-colors ${
-                  forcedStatus === opt.v
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card text-foreground border border-border hover:bg-muted"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </section>
       </div>
 
       {/* Sticky pay button */}
