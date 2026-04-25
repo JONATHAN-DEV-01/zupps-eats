@@ -219,12 +219,6 @@ const ClienteHomePage = () => {
                     className="absolute right-0 mt-2 w-52 rounded-xl bg-card border border-border shadow-lg overflow-hidden z-50"
                   >
                     <button
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                    >
-                      <ShoppingBag size={16} className="text-primary" /> Meus Pedidos
-                    </button>
-                    <button
                       onClick={() => { setMenuOpen(false); navigate("/meus-pedidos"); }}
                       className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                     >
