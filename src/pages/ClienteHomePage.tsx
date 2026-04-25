@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import FloatingCartButton from "@/components/FloatingCartButton";
 import HeaderCartButton from "@/components/HeaderCartButton";
+import { mockRestaurant } from "@/lib/mockRestaurant";
 
 const ClienteHomePage = () => {
   const navigate = useNavigate();
@@ -72,14 +73,19 @@ const ClienteHomePage = () => {
       const response = await fetchApi("/restaurantes");
       if (response.ok) {
         const data = await response.json();
+        // Sempre injeta o mock (Burguer Master) no topo para permitir testes do checkout
+        const merged = [mockRestaurant as any, ...data.filter((r: any) => r.id !== mockRestaurant.id)];
         // RF-06 Req.7: restaurantes abertos primeiro
-        const sorted = [...data].sort((a, b) =>
+        const sorted = merged.sort((a, b) =>
           a.is_open === b.is_open ? 0 : a.is_open ? -1 : 1
         );
         setRestaurantes(sorted);
+      } else {
+        setRestaurantes([mockRestaurant as any]);
       }
     } catch (error) {
       console.error("Erro ao carregar restaurantes", error);
+      setRestaurantes([mockRestaurant as any]);
     } finally {
       setLoading(false);
     }
