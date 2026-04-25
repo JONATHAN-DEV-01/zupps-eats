@@ -142,7 +142,6 @@ const CheckoutPage = () => {
         subtotal_centavos: subtotalCentavos,
         frete_centavos: freteCentavos,
         total_centavos: totalCentavos,
-        forcar_status: forcedStatus,
       });
       setResultado(tx);
       if (tx.status === "aprovado") {
