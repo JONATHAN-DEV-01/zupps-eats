@@ -76,7 +76,10 @@ const CheckoutPage = () => {
   }, [itens.length, restaurante, processing, resultado, navigate]);
 
   // Validations
-  const numeroOk = useMemo(() => validarNumeroCartao(numero), [numero]);
+  const numeroOk = useMemo(
+    () => numero.replace(/\D/g, "").length === 16 && validarNumeroCartao(numero),
+    [numero]
+  );
   const validadeOk = useMemo(() => validarValidade(validade), [validade]);
   const cvvOk = useMemo(() => validarCVV(cvv), [cvv]);
   const titularOk = titular.trim().length >= 3;
