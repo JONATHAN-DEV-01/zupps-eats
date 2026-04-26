@@ -161,6 +161,7 @@ export interface ProcessarPagamentoInput {
   subtotal_centavos: number;
   frete_centavos: number;
   total_centavos: number;
+  token_checkout?: string; // token do POST /carrinho/congelar (quando autenticado)
   forcar_status?: StatusPagamento; // for test buttons
 }
 

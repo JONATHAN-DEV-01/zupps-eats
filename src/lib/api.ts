@@ -138,3 +138,77 @@ export const fetchRestaurantesPorCategoria = async (
   if (!res.ok) throw new Error("Erro ao buscar restaurantes por categoria");
   return res.json();
 };
+
+// ─── Carrinho API ─────────────────────────────────────────────────────────────
+
+export interface CarrinhoItemPayload {
+  produto_id: string;
+  restaurante_id: string;
+  quantidade: number;
+  observacao?: string;
+  adicionais_ids?: number[];
+}
+
+export const carrinhoApi = {
+  /** GET /carrinho — Retorna carrinho completo ou null */
+  get: () => fetchApi("/carrinho"),
+
+  /** POST /carrinho/itens — Adiciona item; pode retornar 409 (conflito de restaurante) */
+  addItem: (payload: CarrinhoItemPayload) =>
+    fetchApi("/carrinho/itens", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  /** PUT /carrinho/itens/<id> — Atualiza quantidade absoluta (0 = remove) */
+  updateItem: (itemId: string, quantidade: number) =>
+    fetchApi(`/carrinho/itens/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify({ quantidade }),
+    }),
+
+  /** DELETE /carrinho/itens/<id> — Remove item */
+  removeItem: (itemId: string) =>
+    fetchApi(`/carrinho/itens/${itemId}`, { method: "DELETE" }),
+
+  /** DELETE /carrinho — Limpa carrinho inteiro */
+  clear: () => fetchApi("/carrinho", { method: "DELETE" }),
+
+  /** POST /carrinho/cupom — Aplica cupom de desconto */
+  applyCoupon: (codigo: string) =>
+    fetchApi("/carrinho/cupom", {
+      method: "POST",
+      body: JSON.stringify({ codigo }),
+    }),
+
+  /** DELETE /carrinho/cupom — Remove cupom */
+  removeCoupon: () => fetchApi("/carrinho/cupom", { method: "DELETE" }),
+
+  /** POST /carrinho/congelar — Congela para checkout, retorna token_checkout */
+  freeze: () => fetchApi("/carrinho/congelar", { method: "POST" }),
+};
+
+// ─── Adicionais API ───────────────────────────────────────────────────────────
+
+export interface GrupoAdicionaisServer {
+  id: string;
+  nome: string;
+  min_selecao: number;
+  max_selecao: number;
+  obrigatorio: boolean;
+  adicionais: {
+    id: number;
+    nome: string;
+    preco: number; // reais (float)
+    disponivel: boolean;
+  }[];
+}
+
+/** GET /produtos/<id>/grupos-adicionais — Lista grupos de adicionais de um produto */
+export const fetchGruposAdicionais = async (
+  produtoId: string
+): Promise<GrupoAdicionaisServer[]> => {
+  const res = await fetchApi(`/produtos/${produtoId}/grupos-adicionais`);
+  if (!res.ok) return [];
+  return res.json();
+};

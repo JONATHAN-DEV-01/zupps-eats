@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
 const CartConflictModal = () => {
   const { pendingConflict, confirmSwitch, dismissConflict, restaurante } = useCart();
+  const [switching, setSwitching] = useState(false);
 
   if (!pendingConflict) return null;
+
+  const handleConfirmSwitch = async () => {
+    setSwitching(true);
+    await confirmSwitch(
+      pendingConflict.restaurante,
+      pendingConflict.item,
+      pendingConflict.quantidade
+    );
+    setSwitching(false);
+  };
 
   return (
     <AnimatePresence>
@@ -14,7 +26,7 @@ const CartConflictModal = () => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
-        onClick={dismissConflict}
+        onClick={() => !switching && dismissConflict()}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -41,21 +53,24 @@ const CartConflictModal = () => {
           <div className="flex gap-3">
             <button
               onClick={dismissConflict}
-              className="flex-1 h-10 rounded-xl bg-muted text-sm font-semibold text-foreground hover:bg-muted/80 transition-colors"
+              disabled={switching}
+              className="flex-1 h-10 rounded-xl bg-muted text-sm font-semibold text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
-              onClick={() =>
-                confirmSwitch(
-                  pendingConflict.restaurante,
-                  pendingConflict.item,
-                  pendingConflict.quantidade
-                )
-              }
-              className="flex-1 h-10 rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors"
+              onClick={handleConfirmSwitch}
+              disabled={switching}
+              className="flex-1 h-10 rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-70 flex items-center justify-center gap-1.5"
             >
-              Limpar e trocar
+              {switching ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Limpando...
+                </>
+              ) : (
+                "Limpar e trocar"
+              )}
             </button>
           </div>
         </motion.div>

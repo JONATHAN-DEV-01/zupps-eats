@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -36,7 +36,9 @@ import { useToast } from "@/hooks/use-toast";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const token_checkout: string | null = (location.state as any)?.token_checkout ?? null;
   const {
     restaurante,
     itens,
@@ -132,6 +134,7 @@ const CheckoutPage = () => {
         cartao: cartaoSelecionado,
         restaurante_id: restaurante.id,
         restaurante_nome: restaurante.nome_fantasia,
+        token_checkout: token_checkout ?? undefined,
         itens: itens.map((i) => ({
           produto_id: i.produto_id,
           nome: i.nome,
@@ -145,7 +148,7 @@ const CheckoutPage = () => {
       });
       setResultado(tx);
       if (tx.status === "aprovado") {
-        clearCart();
+        await clearCart();
       }
     } finally {
       setProcessing(false);

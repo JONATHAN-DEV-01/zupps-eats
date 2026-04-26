@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Minus, Plus, Trash2, Store, ShoppingCart, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft, Minus, Plus, Trash2, Store, ShoppingCart,
+  AlertTriangle, Tag, X, Loader2, CheckCircle2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart, CartItem } from "@/contexts/CartContext";
 import { API_BASE_URL } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const formatCentavos = (centavos: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(centavos / 100);
 
 const CarrinhoPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const {
     restaurante,
     itens,
@@ -20,27 +25,70 @@ const CarrinhoPage = () => {
     faltaParaMinimo,
     pedidoMinimoCentavos,
     congelado,
+    cupomAplicado,
     updateQuantity,
     removeItem,
     clearCart,
     freezeCart,
+    applyCoupon,
+    removeCoupon,
   } = useCart();
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [loadingClear, setLoadingClear] = useState(false);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
+
+  // Cupom
+  const [couponInput, setCouponInput] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const canCheckout = faltaParaMinimo === 0 && itens.length > 0;
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!canCheckout) return;
-    freezeCart();
-    // Navigate to payment page (to be implemented)
-    navigate("/checkout");
+    setLoadingCheckout(true);
+    try {
+      const result = await freezeCart();
+      navigate("/checkout", { state: { token_checkout: result?.token_checkout ?? null } });
+    } catch {
+      toast({ title: "Erro ao processar carrinho", variant: "destructive" });
+    } finally {
+      setLoadingCheckout(false);
+    }
+  };
+
+  const handleClearCart = async () => {
+    setLoadingClear(true);
+    await clearCart();
+    setLoadingClear(false);
+    setShowClearConfirm(false);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    const result = await applyCoupon(couponInput);
+    setCouponLoading(false);
+    if (result.ok) {
+      setCouponInput("");
+      toast({ title: "Cupom aplicado!", description: "Desconto adicionado ao seu pedido." });
+    } else {
+      toast({ title: "Cupom inválido", description: result.error, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    await removeCoupon();
+    toast({ title: "Cupom removido." });
   };
 
   const itemTotalCentavos = (item: CartItem) => {
     const addTotal = item.adicionais.reduce((s, a) => s + a.preco_centavos, 0);
     return (item.preco_unitario_centavos + addTotal) * item.quantidade;
   };
+
+  // Desconto do cupom (diferença entre subtotal calculado localmente e o total do servidor)
+  const descontoCentavos = cupomAplicado?.desconto_centavos ?? 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,18 +256,74 @@ const CarrinhoPage = () => {
           ))}
         </AnimatePresence>
 
+        {/* Cupom */}
+        {itens.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-2 mb-4"
+          >
+            {cupomAplicado ? (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-primary" />
+                  <div>
+                    <p className="text-xs font-bold text-primary">{cupomAplicado.codigo}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      -{formatCentavos(cupomAplicado.desconto_centavos)} de desconto
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="p-1 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <X size={14} className="text-muted-foreground" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
+                    placeholder="Cupom de desconto"
+                    className="w-full h-10 pl-9 pr-3 rounded-xl bg-card border border-border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
+                  />
+                </div>
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={couponLoading || !couponInput.trim()}
+                  className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {couponLoading ? <Loader2 size={14} className="animate-spin" /> : "Aplicar"}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* Summary */}
         {itens.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 p-4 rounded-2xl bg-card border border-border"
+            className="mt-2 p-4 rounded-2xl bg-card border border-border"
           >
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-semibold text-foreground">{formatCentavos(subtotalCentavos)}</span>
               </div>
+              {descontoCentavos > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-primary font-medium">Desconto ({cupomAplicado?.codigo})</span>
+                  <span className="font-semibold text-primary">-{formatCentavos(descontoCentavos)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Frete</span>
                 <span className="font-semibold text-foreground">
@@ -245,14 +349,23 @@ const CarrinhoPage = () => {
 
             <button
               onClick={handleCheckout}
-              disabled={!canCheckout || congelado}
-              className={`w-full h-12 mt-4 rounded-xl text-sm font-bold transition-colors ${
-                canCheckout && !congelado
+              disabled={!canCheckout || congelado || loadingCheckout}
+              className={`w-full h-12 mt-4 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
+                canCheckout && !congelado && !loadingCheckout
                   ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "bg-muted text-muted-foreground cursor-not-allowed"
               }`}
             >
-              {congelado ? "Pedido congelado" : "Ir para o Pagamento"}
+              {loadingCheckout ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Preparando...
+                </>
+              ) : congelado ? (
+                "Pedido congelado"
+              ) : (
+                "Ir para o Pagamento"
+              )}
             </button>
           </motion.div>
         )}
@@ -266,7 +379,7 @@ const CarrinhoPage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
-            onClick={() => setShowClearConfirm(false)}
+            onClick={() => !loadingClear && setShowClearConfirm(false)}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -280,15 +393,17 @@ const CarrinhoPage = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowClearConfirm(false)}
-                  className="flex-1 h-10 rounded-xl bg-muted text-sm font-semibold text-foreground"
+                  disabled={loadingClear}
+                  className="flex-1 h-10 rounded-xl bg-muted text-sm font-semibold text-foreground disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={() => { clearCart(); setShowClearConfirm(false); }}
-                  className="flex-1 h-10 rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground"
+                  onClick={handleClearCart}
+                  disabled={loadingClear}
+                  className="flex-1 h-10 rounded-xl bg-destructive text-sm font-semibold text-destructive-foreground disabled:opacity-70 flex items-center justify-center gap-1.5"
                 >
-                  Limpar
+                  {loadingClear ? <Loader2 size={14} className="animate-spin" /> : "Limpar"}
                 </button>
               </div>
             </motion.div>

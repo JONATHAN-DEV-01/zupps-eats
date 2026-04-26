@@ -1,20 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Package, Store, Search, X, Plus, Minus, ShoppingCart, Check } from "lucide-react";
-import { fetchApi, API_BASE_URL } from "@/lib/api";
+import { ArrowLeft, Package, Store, Search, X, Plus, Minus, ShoppingCart, Check, Loader2 } from "lucide-react";
+import { fetchApi, API_BASE_URL, fetchGruposAdicionais, GrupoAdicionaisServer } from "@/lib/api";
 import { useCart, CartRestaurant, CartAdditional } from "@/contexts/CartContext";
 import FloatingCartButton from "@/components/FloatingCartButton";
 import { useToast } from "@/hooks/use-toast";
 import { mockRestaurant, mockProdutos, MOCK_RESTAURANT_ID } from "@/lib/mockRestaurant";
 
-// Mock additionals for demo
-const MOCK_ADICIONAIS: CartAdditional[] = [
-  { id: "add-1", nome: "Queijo extra", preco_centavos: 350 },
-  { id: "add-2", nome: "Bacon", preco_centavos: 500 },
-  { id: "add-3", nome: "Molho especial", preco_centavos: 200 },
-  { id: "add-4", nome: "Cebola caramelizada", preco_centavos: 300 },
-];
 
 const formatCentavos = (centavos: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(centavos / 100);
@@ -37,6 +30,9 @@ const ClienteRestaurantePage = () => {
   const [selectedAdicionais, setSelectedAdicionais] = useState<CartAdditional[]>([]);
   const [observacao, setObservacao] = useState("");
   const [addedAnimation, setAddedAnimation] = useState<string | null>(null);
+  // Adicionais reais do produto selecionado
+  const [gruposAdicionais, setGruposAdicionais] = useState<GrupoAdicionaisServer[]>([]);
+  const [loadingAdicionais, setLoadingAdicionais] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -76,12 +72,26 @@ const ClienteRestaurantePage = () => {
     (p.descricao && p.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const openAddModal = (produto: any) => {
+  const openAddModal = async (produto: any) => {
     setSelectedProduct(produto);
     setQuantidade(1);
     setSelectedAdicionais([]);
     setObservacao("");
+    setGruposAdicionais([]);
     setModalOpen(true);
+
+    // Carrega adicionais reais do produto (exceto mock)
+    if (id !== MOCK_RESTAURANT_ID && produto.id) {
+      setLoadingAdicionais(true);
+      try {
+        const grupos = await fetchGruposAdicionais(String(produto.id));
+        setGruposAdicionais(grupos);
+      } catch {
+        // silently ignore — sem adicionais
+      } finally {
+        setLoadingAdicionais(false);
+      }
+    }
   };
 
   const toggleAdicional = (add: CartAdditional) => {
@@ -92,7 +102,7 @@ const ClienteRestaurantePage = () => {
     );
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedProduct || !restaurante) return;
 
     const cartRestaurant: CartRestaurant = {
@@ -108,7 +118,7 @@ const ClienteRestaurantePage = () => {
       ? Math.round((selectedProduct.preco_promocional || selectedProduct.preco) * 100)
       : Math.round(selectedProduct.preco * 100);
 
-    const result = addItem(cartRestaurant, {
+    const result = await addItem(cartRestaurant, {
       produto_id: selectedProduct.id.toString(),
       nome: selectedProduct.nome,
       descricao: selectedProduct.descricao || null,
@@ -123,8 +133,10 @@ const ClienteRestaurantePage = () => {
       setAddedAnimation(selectedProduct.id.toString());
       setTimeout(() => setAddedAnimation(null), 1200);
       toast({ title: "Item adicionado ao carrinho!", description: `${quantidade}x ${selectedProduct.nome}` });
+    } else if (result === "error") {
+      toast({ title: "Erro ao adicionar item", description: "Tente novamente.", variant: "destructive" });
     }
-    // "conflict" is handled by CartConflictModal
+    // "conflict" é tratado pelo CartConflictModal
   };
 
   const modalSubtotal = () => {
@@ -160,7 +172,7 @@ const ClienteRestaurantePage = () => {
         </div>
       )}
 
-      <div className="container py-6 max-w-2xl -mt-12 relative z-10">
+      <div className={`container py-6 max-w-2xl relative z-10${restaurante?.capa ? " -mt-12" : ""}`}>
         {/* Restaurant Header */}
         {!loading && restaurante && (
           <motion.div
@@ -349,36 +361,57 @@ const ClienteRestaurantePage = () => {
               {/* Additionals */}
               <div className="p-5 border-b border-border">
                 <h4 className="text-sm font-bold text-foreground mb-3">Adicionais</h4>
-                <div className="space-y-2">
-                  {MOCK_ADICIONAIS.map((add) => {
-                    const selected = selectedAdicionais.find((a) => a.id === add.id);
-                    return (
-                      <button
-                        key={add.id}
-                        onClick={() => toggleAdicional(add)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
-                          selected
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/30"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                              selected ? "bg-primary border-primary" : "border-border"
-                            }`}
-                          >
-                            {selected && <Check size={12} className="text-primary-foreground" />}
-                          </div>
-                          <span className="text-sm font-medium text-foreground">{add.nome}</span>
-                        </div>
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          + {formatCentavos(add.preco_centavos)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {loadingAdicionais ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 size={20} className="animate-spin text-primary" />
+                  </div>
+                ) : gruposAdicionais.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum adicional disponível para este item.</p>
+                ) : (
+                  gruposAdicionais.map((grupo) => (
+                    <div key={grupo.id} className="mb-4">
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                        {grupo.nome}
+                        {grupo.obrigatorio && <span className="ml-1 text-destructive">*</span>}
+                      </p>
+                      <div className="space-y-2">
+                        {grupo.adicionais.filter((a) => a.disponivel).map((add) => {
+                          const cartAdd: CartAdditional = {
+                            id: String(add.id),
+                            nome: add.nome,
+                            preco_centavos: Math.round(add.preco * 100),
+                          };
+                          const selected = selectedAdicionais.find((a) => a.id === cartAdd.id);
+                          return (
+                            <button
+                              key={add.id}
+                              onClick={() => toggleAdicional(cartAdd)}
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                                selected
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover:border-primary/30"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                                    selected ? "bg-primary border-primary" : "border-border"
+                                  }`}
+                                >
+                                  {selected && <Check size={12} className="text-primary-foreground" />}
+                                </div>
+                                <span className="text-sm font-medium text-foreground">{add.nome}</span>
+                              </div>
+                              <span className="text-xs font-semibold text-muted-foreground">
+                                + {formatCentavos(Math.round(add.preco * 100))}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Observations */}
