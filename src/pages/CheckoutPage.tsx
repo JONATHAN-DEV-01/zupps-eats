@@ -14,7 +14,12 @@ import {
   XCircle,
   Clock,
   Lock,
+  MapPin,
+  QrCode,
+  Smartphone,
+  Banknote,
 } from "lucide-react";
+import { fetchApi } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import {
   CartaoTokenizado,
@@ -46,11 +51,17 @@ const CheckoutPage = () => {
     freteCentavos,
     totalCentavos,
     clearCart,
+    cupomAplicado,
   } = useCart();
 
   const [cartoes, setCartoes] = useState<CartaoTokenizado[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
+
+  // Form states
+  const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD" | "PIX" | "CASH" | "CARD_MACHINE">("CREDIT_CARD");
+  const [changeFor, setChangeFor] = useState("");
+  const [notes, setNotes] = useState("");
 
   // New card form
   const [numero, setNumero] = useState("");
@@ -114,14 +125,15 @@ const CheckoutPage = () => {
   const cartaoSelecionado = cartoes.find((c) => c.id === selectedCardId) || null;
 
   const podePagar =
-    !!cartaoSelecionado &&
     !!restaurante &&
     restaurante.is_open &&
     itens.length > 0 &&
-    !processing;
+    !processing &&
+    (paymentMethod !== "CREDIT_CARD" || !!cartaoSelecionado);
 
   const handlePagar = async () => {
-    if (!cartaoSelecionado || !restaurante) return;
+    if (!restaurante) return;
+    if (paymentMethod === "CREDIT_CARD" && !cartaoSelecionado) return;
 
     if (!restaurante.is_open) {
       toast({ title: "Restaurante fechado", description: "Não é possível processar o pagamento.", variant: "destructive" });
@@ -130,26 +142,55 @@ const CheckoutPage = () => {
 
     setProcessing(true);
     try {
-      const tx = await processarPagamento({
-        cartao: cartaoSelecionado,
+      const payload = {
+        restaurant_id: restaurante.id,
+        payment: {
+          method: paymentMethod,
+          gateway_token: paymentMethod === "CREDIT_CARD" ? cartaoSelecionado?.token : undefined,
+          change_for: paymentMethod === "CASH" && changeFor ? parseFloat(changeFor.replace(",", ".")) : undefined,
+        },
+        coupon_code: cupomAplicado?.codigo || undefined,
+        notes: notes.trim() || undefined,
+        items: itens.map(i => ({
+          product_id: i.produto_id,
+          quantity: i.quantidade,
+          options: i.adicionais.map(a => ({
+            option_id: a.id,
+            quantity: 1
+          }))
+        }))
+      };
+
+      const res = await fetchApi("/orders", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast({ title: "Erro ao processar pedido", description: data.error || "Tente novamente.", variant: "destructive" });
+        return;
+      }
+
+      // Preenche mock do histórico para a tela de resultado exibir
+      setResultado({
+        id: "mock",
+        numero_pedido: data.order_id || "ZP-" + Date.now().toString().slice(-8),
         restaurante_id: restaurante.id,
         restaurante_nome: restaurante.nome_fantasia,
-        token_checkout: token_checkout ?? undefined,
-        itens: itens.map((i) => ({
-          produto_id: i.produto_id,
-          nome: i.nome,
-          quantidade: i.quantidade,
-          preco_unitario_centavos: i.preco_unitario_centavos,
-          adicionais_centavos: i.adicionais.reduce((s, a) => s + a.preco_centavos, 0),
-        })),
+        itens: [],
         subtotal_centavos: subtotalCentavos,
         frete_centavos: freteCentavos,
         total_centavos: totalCentavos,
+        cartao_ultimos4: paymentMethod === "CREDIT_CARD" ? cartaoSelecionado?.ultimos4 || "" : paymentMethod,
+        cartao_bandeira: paymentMethod === "CREDIT_CARD" ? cartaoSelecionado?.bandeira || "" : "App",
+        status: "aprovado",
+        criado_em: new Date().toISOString(),
       });
-      setResultado(tx);
-      if (tx.status === "aprovado") {
-        await clearCart();
-      }
+
+      await clearCart();
+    } catch (error) {
+      toast({ title: "Erro de conexão", description: "Verifique sua conexão e tente novamente.", variant: "destructive" });
     } finally {
       setProcessing(false);
     }
@@ -269,11 +310,91 @@ const CheckoutPage = () => {
       )}
 
       <div className="container py-6 max-w-2xl space-y-5">
-        {/* Saved cards */}
+        
+        {/* Endereço de Entrega */}
+        <section>
+          <h2 className="text-sm font-bold text-foreground mb-3">Endereço de Entrega</h2>
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-border bg-card">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <MapPin size={20} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground truncate">Rua das Flores, 123 - Centro</p>
+              <p className="text-xs text-muted-foreground">Complemento: Apto 204</p>
+            </div>
+            <button className="text-xs font-bold text-primary hover:underline shrink-0">
+              Trocar
+            </button>
+          </div>
+        </section>
+
+        {/* Observações do Pedido */}
+        <section>
+          <h2 className="text-sm font-bold text-foreground mb-3">Observações do Pedido</h2>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ex: Tocar o interfone 204, tirar cebola..."
+            maxLength={140}
+            className="w-full h-24 p-3 rounded-xl bg-card border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all resize-none placeholder:text-muted-foreground"
+          />
+          <div className="text-right mt-1 text-[10px] text-muted-foreground">
+            {notes.length}/140
+          </div>
+        </section>
+
+        {/* Formas de Pagamento */}
         <section>
           <h2 className="text-sm font-bold text-foreground mb-3">Forma de pagamento</h2>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button
+              onClick={() => setPaymentMethod("CREDIT_CARD")}
+              className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors ${
+                paymentMethod === "CREDIT_CARD" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30"
+              }`}
+            >
+              <CreditCard size={20} />
+              <span className="text-xs font-bold">Cartão (App)</span>
+            </button>
+            <button
+              onClick={() => setPaymentMethod("PIX")}
+              className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors ${
+                paymentMethod === "PIX" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30"
+              }`}
+            >
+              <QrCode size={20} />
+              <span className="text-xs font-bold">Pix</span>
+            </button>
+            <button
+              onClick={() => setPaymentMethod("CARD_MACHINE")}
+              className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors ${
+                paymentMethod === "CARD_MACHINE" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30"
+              }`}
+            >
+              <Smartphone size={20} />
+              <span className="text-xs font-bold">Maquininha</span>
+            </button>
+            <button
+              onClick={() => setPaymentMethod("CASH")}
+              className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-colors ${
+                paymentMethod === "CASH" ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30"
+              }`}
+            >
+              <Banknote size={20} />
+              <span className="text-xs font-bold">Dinheiro</span>
+            </button>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {paymentMethod === "CREDIT_CARD" && (
+              <motion.div
+                key="credit_card"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2 overflow-hidden"
+              >
             {cartoes.map((card) => {
               const selected = selectedCardId === card.id;
               return (
@@ -325,7 +446,73 @@ const CheckoutPage = () => {
                 </p>
               </div>
             </button>
-          </div>
+              </motion.div>
+            )}
+            {paymentMethod === "PIX" && (
+              <motion.div
+                key="pix"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 text-center">
+                  <QrCode size={32} className="mx-auto text-primary mb-2" />
+                  <p className="text-sm font-bold text-foreground">Pagamento via PIX</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O QR Code será gerado após o fechamento do pedido.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+            {paymentMethod === "CARD_MACHINE" && (
+              <motion.div
+                key="card_machine"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 rounded-2xl bg-card border border-border text-center">
+                  <Smartphone size={32} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-bold text-foreground">Máquina na Entrega</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O entregador levará a maquininha até você. Aceita débito e crédito.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+            {paymentMethod === "CASH" && (
+              <motion.div
+                key="cash"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 rounded-2xl bg-card border border-border">
+                  <label className="block text-sm font-bold text-foreground mb-2">
+                    Precisa de troco para quanto?
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Se for pagar com valor exato, pode deixar em branco.
+                  </p>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
+                      R$
+                    </span>
+                    <input
+                      type="number"
+                      value={changeFor}
+                      onChange={(e) => setChangeFor(e.target.value)}
+                      placeholder="Ex: 50"
+                      className="w-full h-11 pl-9 pr-3 rounded-xl bg-muted border-none text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
         {/* Order summary */}
@@ -388,7 +575,7 @@ const CheckoutPage = () => {
               <>Confirmar e Pagar · {formatCentavos(totalCentavos)}</>
             )}
           </button>
-          {!cartaoSelecionado && (
+          {!podePagar && paymentMethod === "CREDIT_CARD" && !cartaoSelecionado && (
             <p className="text-[11px] text-muted-foreground text-center mt-2">
               Selecione um cartão para continuar
             </p>
