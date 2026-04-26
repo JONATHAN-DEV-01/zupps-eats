@@ -152,7 +152,7 @@ const ClienteRestaurantePage = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
-        <div className="container flex items-center h-14 gap-3">
+        <div className="container max-w-2xl flex items-center h-14 gap-3">
           <button onClick={() => navigate("/cliente-home")} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
             <ArrowLeft size={20} className="text-foreground" />
           </button>
@@ -161,7 +161,7 @@ const ClienteRestaurantePage = () => {
       </header>
 
       {/* Cover Image */}
-      {!loading && restaurante?.capa && (
+      {!loading && restaurante?.capa && restaurante.capa !== "null" && (
         <div className="w-full h-48 md:h-64 relative">
           <img
             src={`${API_BASE_URL}/${restaurante.capa.replace(/\\/g, '/')}`}
@@ -172,7 +172,7 @@ const ClienteRestaurantePage = () => {
         </div>
       )}
 
-      <div className={`container py-6 max-w-2xl relative z-10${restaurante?.capa ? " -mt-12" : ""}`}>
+      <div className={`container py-6 max-w-2xl relative z-10${restaurante?.capa && restaurante.capa !== "null" ? " -mt-12" : ""}`}>
         {/* Restaurant Header */}
         {!loading && restaurante && (
           <motion.div
