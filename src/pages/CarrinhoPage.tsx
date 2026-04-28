@@ -104,7 +104,15 @@ const CarrinhoPage = () => {
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                if (itens.length === 0) {
+                  navigate("/cliente-home");
+                } else if (window.history.length > 2) {
+                  navigate(-1);
+                } else {
+                  navigate("/cliente-home");
+                }
+              }}
               className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
             >
               <ArrowLeft size={20} className="text-foreground" />
