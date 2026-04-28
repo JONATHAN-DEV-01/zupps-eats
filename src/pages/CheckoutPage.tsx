@@ -19,7 +19,7 @@ import {
   Smartphone,
   Banknote,
 } from "lucide-react";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserProfile } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
 import {
   CartaoTokenizado,
@@ -291,14 +291,15 @@ const CheckoutPage = () => {
 
       } else if (paymentMethod === "PIX") {
         const cpf = storedCpf();
+        const profile = getUserProfile();
         const resPix = await fetchApi("/pagamentos/pix", {
           method: "POST",
           body: JSON.stringify({
             pedido_id: orderId,
             payer: {
-              email: "cliente@teste.com",
-              first_name: "Cliente",
-              last_name: "Zupps",
+              email: profile?.email || "",
+              first_name: profile?.nome || "Cliente",
+              last_name: profile?.sobrenome || "Zupps",
               identification: { type: "CPF", number: cpf }
             }
           })
