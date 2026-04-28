@@ -80,6 +80,7 @@ interface CartContextType {
   removeItem: (itemId: string) => Promise<void>;
   clearCart: () => Promise<void>;
   freezeCart: () => Promise<{ token_checkout: string; resumo: any } | null>;
+  unfreezeCart: () => void;
   applyCoupon: (code: string) => Promise<{ ok: boolean; error?: string }>;
   removeCoupon: () => Promise<void>;
   pendingConflict: {
@@ -435,6 +436,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   }, []);
 
+  // ─── unfreezeCart ──────────────────────────────────────────────────────────
+
+  const unfreezeCart = useCallback(() => {
+    setState((prev) => ({ ...prev, congelado: false }));
+  }, []);
+
+
   // ─── applyCoupon ───────────────────────────────────────────────────────────
 
   const applyCoupon = useCallback(
@@ -507,6 +515,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeItem,
         clearCart,
         freezeCart,
+        unfreezeCart,
         applyCoupon,
         removeCoupon,
         pendingConflict,

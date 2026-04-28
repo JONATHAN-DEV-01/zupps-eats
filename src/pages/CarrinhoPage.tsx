@@ -4,6 +4,7 @@ import {
   ArrowLeft, Minus, Plus, Trash2, Store, ShoppingCart,
   AlertTriangle, Tag, X, Loader2, CheckCircle2,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart, CartItem } from "@/contexts/CartContext";
 import { API_BASE_URL } from "@/lib/api";
@@ -30,6 +31,7 @@ const CarrinhoPage = () => {
     removeItem,
     clearCart,
     freezeCart,
+    unfreezeCart,
     applyCoupon,
     removeCoupon,
   } = useCart();
@@ -41,6 +43,11 @@ const CarrinhoPage = () => {
   // Cupom
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
+
+  // Descongelar o carrinho sempre que o usuário voltar para a tela do carrinho
+  useEffect(() => {
+    unfreezeCart();
+  }, [unfreezeCart]);
 
   const canCheckout = faltaParaMinimo === 0 && itens.length > 0;
 
