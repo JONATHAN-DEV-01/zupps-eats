@@ -73,6 +73,26 @@ const CheckoutPage = () => {
   const [resultado, setResultado] = useState<HistoricoTransacao | null>(null);
   const [pixData, setPixData] = useState<{ qrCodeBase64: string, qrCodeCopiaCola: string, pedidoId: string } | null>(null);
 
+  // CPF Modal for PIX
+  const [showCpfModal, setShowCpfModal] = useState(false);
+  const [cpfInput, setCpfInput] = useState("");
+  const [cpfError, setCpfError] = useState("");
+
+  const formatCpf = (v: string) => {
+    const digits = v.replace(/\D/g, "").slice(0, 11);
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  };
+
+  const validateCpf = (cpf: string) => {
+    const d = cpf.replace(/\D/g, "");
+    return d.length === 11 && !/^(\d)\1{10}$/.test(d);
+  };
+
+  const storedCpf = () => sessionStorage.getItem("pix_cpf") || "";
+
   // Polling PIX
   useEffect(() => {
     if (!pixData?.pedidoId) return;
@@ -181,12 +201,29 @@ const CheckoutPage = () => {
     !processing &&
     (paymentMethod !== "CREDIT_CARD" || !!cartaoSelecionado);
 
-  const handlePagar = async () => {
+  const handleConfirmCpf = () => {
+    if (!validateCpf(cpfInput)) {
+      setCpfError("CPF inválido. Verifique e tente novamente.");
+      return;
+    }
+    sessionStorage.setItem("pix_cpf", cpfInput.replace(/\D/g, ""));
+    setShowCpfModal(false);
+    setCpfError("");
+    handlePagar(true);
+  };
+
+  const handlePagar = async (skipCpfCheck = false) => {
     if (!restaurante) return;
     if (paymentMethod === "CREDIT_CARD" && !cartaoSelecionado) return;
 
     if (!restaurante.is_open) {
       toast({ title: "Restaurante fechado", description: "Não é possível processar o pagamento.", variant: "destructive" });
+      return;
+    }
+
+    // Se for PIX e não tiver CPF salvo, abrir modal
+    if (paymentMethod === "PIX" && !skipCpfCheck && !storedCpf()) {
+      setShowCpfModal(true);
       return;
     }
 
@@ -253,11 +290,17 @@ const CheckoutPage = () => {
         await clearCart();
 
       } else if (paymentMethod === "PIX") {
+        const cpf = storedCpf();
         const resPix = await fetchApi("/pagamentos/pix", {
           method: "POST",
           body: JSON.stringify({
             pedido_id: orderId,
-            payer: { email: "cliente@teste.com", first_name: "Cliente", last_name: "Teste" }
+            payer: {
+              email: "cliente@teste.com",
+              first_name: "Cliente",
+              last_name: "Zupps",
+              identification: { type: "CPF", number: cpf }
+            }
           })
         });
         const pixDataRes = await resPix.json();
@@ -295,6 +338,80 @@ const CheckoutPage = () => {
       setProcessing(false);
     }
   };
+
+  // ─── CPF Modal ───────────────────────────────────────────────────────────────
+  const cpfModalEl = showCpfModal && (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        className="w-full max-w-sm bg-card rounded-3xl shadow-2xl p-6 border border-border"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Lock size={20} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-base font-extrabold text-foreground">CPF para o PIX</h2>
+            <p className="text-xs text-muted-foreground">Exigido pelo Banco Central</p>
+          </div>
+          <button
+            onClick={() => setShowCpfModal(false)}
+            className="ml-auto w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+          >
+            <X size={15} className="text-foreground" />
+          </button>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
+          Informe seu CPF para gerar o QR Code PIX. Seus dados ficam salvos apenas neste dispositivo.
+        </p>
+
+        <div className="relative mb-1">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="000.000.000-00"
+            value={cpfInput}
+            onChange={(e) => {
+              setCpfInput(formatCpf(e.target.value));
+              setCpfError("");
+            }}
+            maxLength={14}
+            autoFocus
+            className={`w-full h-12 px-4 rounded-xl border text-sm font-medium transition-all focus:outline-none focus:ring-2 ${
+              cpfError
+                ? "border-destructive bg-destructive/5 focus:ring-destructive/30"
+                : "border-border bg-background focus:ring-primary/30 focus:border-primary"
+            }`}
+          />
+        </div>
+        {cpfError && (
+          <p className="text-xs text-destructive mb-3 flex items-center gap-1">
+            <AlertTriangle size={12} /> {cpfError}
+          </p>
+        )}
+
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={() => setShowCpfModal(false)}
+            className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirmCpf}
+            disabled={cpfInput.replace(/\D/g, "").length < 11}
+            className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            Confirmar
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 
   // ─── Result screen ──────────────────────────────────────────────────────────
   if (resultado) {
@@ -438,6 +555,8 @@ const CheckoutPage = () => {
   // ─── Main checkout ──────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background pb-32">
+      {/* CPF Modal for PIX */}
+      {cpfModalEl}
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
         <div className="container flex items-center gap-3 h-14">
@@ -707,7 +826,7 @@ const CheckoutPage = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t border-border p-4">
         <div className="container max-w-2xl">
           <button
-            onClick={handlePagar}
+            onClick={() => handlePagar()}
             disabled={!podePagar}
             className={`w-full h-12 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
               podePagar
