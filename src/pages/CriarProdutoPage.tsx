@@ -66,10 +66,6 @@ const CriarProdutoPage = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "Imagem muito grande", description: "A imagem deve ter no máximo 5MB.", variant: "destructive" });
-        return;
-      }
       const reader = new FileReader();
       reader.onloadend = () => {
         // Validar Resolução Mínima (800x800)
@@ -197,7 +193,7 @@ const CriarProdutoPage = () => {
                     <ImageIcon size={24} className="text-primary" />
                   </div>
                   <p className="text-sm font-bold text-foreground">Toque para adicionar foto</p>
-                  <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP • Máx 5MB</p>
+                  <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP</p>
                 </div>
               )}
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
