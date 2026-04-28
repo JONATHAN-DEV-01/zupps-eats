@@ -150,12 +150,12 @@ const CheckoutPage = () => {
     if (list.length > 0) setSelectedCardId(list[0].id);
   }, []);
 
-  // Guard: empty cart or no restaurant — redirect back
+  // Guard: empty cart or no restaurant — redirect back (mas não durante PIX ou resultado)
   useEffect(() => {
-    if (!processing && !resultado && (itens.length === 0 || !restaurante)) {
+    if (!processing && !resultado && !pixData && (itens.length === 0 || !restaurante)) {
       navigate("/carrinho");
     }
-  }, [itens.length, restaurante, processing, resultado, navigate]);
+  }, [itens.length, restaurante, processing, resultado, pixData, navigate]);
 
   // Validations
   const numeroOk = useMemo(
