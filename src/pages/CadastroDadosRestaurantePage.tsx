@@ -77,6 +77,14 @@ const CadastroDadosRestaurantePage = () => {
             // Update localStorage
             const updatedProfile = { ...userProfile, ...rest };
             localStorage.setItem("user_profile", JSON.stringify(updatedProfile));
+          } else {
+            // Restaurante não existe mais no back-end (Ghost ID)
+            const cleanedProfile = { ...userProfile };
+            delete cleanedProfile.restaurante_id;
+            delete cleanedProfile.cnpj;
+            cleanedProfile.perfil = "CLIENTE";
+            localStorage.setItem("user_profile", JSON.stringify(cleanedProfile));
+            window.location.reload(); // Recarrega a página para limpar o estado isEditing
           }
         }
       } catch (err) {
@@ -150,22 +158,22 @@ const CadastroDadosRestaurantePage = () => {
       <h1 className="text-2xl font-extrabold text-foreground mb-2">Dados do Restaurante</h1>
       <p className="text-muted-foreground text-sm mb-6">Preencha as informações do seu estabelecimento</p>
 
-      <form className="space-y-3" onSubmit={handleSubmit}>
+      <form className="space-y-3" onSubmit={handleSubmit} autoComplete="off">
         <div className="relative">
           <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="email" placeholder="E-mail do Restaurante *" aria-label="E-mail" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} className={inputClass} />
+          <input type="email" placeholder="E-mail do Restaurante *" aria-label="E-mail" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} autoComplete="new-password" name="new-email" className={inputClass} />
         </div>
         <div className="relative">
           <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Nome Fantasia *" aria-label="Nome Fantasia" required value={nomeFantasia} onChange={(e) => setNomeFantasia(e.target.value)} disabled={loading} className={inputClass} />
+          <input type="text" placeholder="Nome Fantasia *" aria-label="Nome Fantasia" required value={nomeFantasia} onChange={(e) => setNomeFantasia(e.target.value)} disabled={loading} autoComplete="new-password" name="new-nome-fantasia" className={inputClass} />
         </div>
         <div className="relative">
           <Building size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Razão Social *" aria-label="Razão Social" required value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} disabled={loading} className={inputClass} />
+          <input type="text" placeholder="Razão Social *" aria-label="Razão Social" required value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} disabled={loading} autoComplete="new-password" name="new-razao-social" className={inputClass} />
         </div>
         <div className="relative">
           <CreditCard size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="CNPJ *" aria-label="CNPJ" required value={cnpj} onChange={(e) => setCnpj(formatCnpj(e.target.value))} disabled={loading} className={inputClass} />
+          <input type="text" placeholder="CNPJ *" aria-label="CNPJ" required value={cnpj} onChange={(e) => setCnpj(formatCnpj(e.target.value))} disabled={loading} autoComplete="new-password" name="new-cnpj" className={inputClass} />
         </div>
 
         <div className="py-2">
