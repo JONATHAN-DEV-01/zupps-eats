@@ -1,6 +1,12 @@
 // Mock payments service — simulates POST /pagamentos, POST /cartoes, GET /pagamentos/usuario
 // Persists tokenized cards and transaction history in localStorage.
 
+declare global {
+  interface Window {
+    MercadoPago: any;
+  }
+}
+
 export interface CartaoTokenizado {
   id: string;
   token: string;
@@ -127,17 +133,23 @@ export interface NovoCartaoInput {
   cvv: string;
 }
 
-// Inicializamos o Mercado Pago fora (ou chamamos no component), mas podemos carregar o script via initMercadoPago
-import { initMercadoPago, loadMercadoPago } from '@mercadopago/sdk-react';
-
+// O sdk-react não exporta mais loadMercadoPago. Vamos injetar o script manualmente para garantir o carregamento assíncrono.
 let mpInitialized = false;
 
 export const initializeMP = async () => {
-  if (!mpInitialized) {
-    await loadMercadoPago();
-    initMercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY || 'TEST-PUBLIC-KEY-HERE', { locale: 'pt-BR' });
-    mpInitialized = true;
+  if (mpInitialized && window.MercadoPago) return;
+
+  if (!document.querySelector('script[src="https://sdk.mercadopago.com/js/v2"]')) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://sdk.mercadopago.com/js/v2";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
   }
+  
+  mpInitialized = true;
 };
 
 export const tokenizarCartao = async (input: NovoCartaoInput): Promise<CartaoTokenizado> => {
