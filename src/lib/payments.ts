@@ -36,6 +36,16 @@ export interface HistoricoTransacao {
   criado_em: string;
 }
 
+export interface PayerInfo {
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  identification?: {
+    type: string;
+    number: string;
+  };
+}
+
 const CARDS_KEY = "zupps_cartoes";
 const TX_KEY = "zupps_transacoes";
 
@@ -117,23 +127,62 @@ export interface NovoCartaoInput {
   cvv: string;
 }
 
-// Simula POST /cartoes — envia para gateway fictício, retorna token, salva últimos 4 dígitos.
+// Inicializamos o Mercado Pago fora (ou chamamos no component), mas podemos carregar o script via initMercadoPago
+import { initMercadoPago, loadMercadoPago } from '@mercadopago/sdk-react';
+
+let mpInitialized = false;
+
+export const initializeMP = async () => {
+  if (!mpInitialized) {
+    await loadMercadoPago();
+    initMercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY || 'TEST-PUBLIC-KEY-HERE', { locale: 'pt-BR' });
+    mpInitialized = true;
+  }
+};
+
 export const tokenizarCartao = async (input: NovoCartaoInput): Promise<CartaoTokenizado> => {
-  await sleep(700); // simulate gateway latency
+  await initializeMP();
+  
+  const mp = new window.MercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY || 'TEST-PUBLIC-KEY-HERE', { locale: 'pt-BR' });
+  
   const numeroLimpo = input.numero.replace(/\D/g, "");
-  const novo: CartaoTokenizado = {
-    id: randomId(),
-    token: randomToken(),
-    ultimos4: numeroLimpo.slice(-4),
-    bandeira: detectBandeira(numeroLimpo),
-    titular: input.titular.trim().toUpperCase(),
-    validade: input.validade,
-    criado_em: new Date().toISOString(),
-  };
-  const cards = listarCartoes();
-  cards.unshift(novo);
-  persistCartoes(cards);
-  return novo;
+  const [mes, anoStr] = input.validade.split('/');
+  // Assume "25" means 2025
+  const ano = anoStr.length === 2 ? `20${anoStr}` : anoStr;
+
+  try {
+    const response = await mp.createCardToken({
+      cardNumber: numeroLimpo,
+      cardholderName: input.titular.trim().toUpperCase(),
+      cardExpirationMonth: mes,
+      cardExpirationYear: ano,
+      securityCode: input.cvv,
+      // Se necessário identificação, passar aqui:
+      // identificationType: 'CPF',
+      // identificationNumber: '11111111111'
+    });
+
+    if (response && response.id) {
+      const novo: CartaoTokenizado = {
+        id: randomId(),
+        token: response.id,
+        ultimos4: response.lastFourDigits || numeroLimpo.slice(-4),
+        bandeira: detectBandeira(numeroLimpo),
+        titular: input.titular.trim().toUpperCase(),
+        validade: input.validade,
+        criado_em: new Date().toISOString(),
+      };
+      const cards = listarCartoes();
+      cards.unshift(novo);
+      persistCartoes(cards);
+      return novo;
+    }
+    
+    throw new Error("Não foi possível gerar o token do cartão");
+  } catch (error) {
+    console.error("Erro na tokenização:", error);
+    throw error;
+  }
 };
 
 export const removerCartao = (id: string) => {

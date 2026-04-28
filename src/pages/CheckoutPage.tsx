@@ -24,13 +24,11 @@ import { useCart } from "@/contexts/CartContext";
 import {
   CartaoTokenizado,
   HistoricoTransacao,
-  
   formatCentavos,
   formatCVV,
   formatNumeroCartao,
   formatValidade,
   listarCartoes,
-  processarPagamento,
   removerCartao,
   tokenizarCartao,
   validarCVV,
@@ -73,6 +71,58 @@ const CheckoutPage = () => {
   // Payment processing
   const [processing, setProcessing] = useState(false);
   const [resultado, setResultado] = useState<HistoricoTransacao | null>(null);
+  const [pixData, setPixData] = useState<{ qrCodeBase64: string, qrCodeCopiaCola: string, pedidoId: string } | null>(null);
+
+  // Polling PIX
+  useEffect(() => {
+    if (!pixData?.pedidoId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetchApi(`/pagamentos/${pixData.pedidoId}/status`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'approved' || data.status === 'aprovado') {
+            clearInterval(interval);
+            setPixData(null);
+            setResultado({
+               id: "mock",
+               numero_pedido: pixData.pedidoId,
+               restaurante_id: restaurante?.id || "",
+               restaurante_nome: restaurante?.nome_fantasia || "",
+               itens: [],
+               subtotal_centavos: subtotalCentavos,
+               frete_centavos: freteCentavos,
+               total_centavos: totalCentavos,
+               cartao_ultimos4: "PIX",
+               cartao_bandeira: "PIX",
+               status: "aprovado",
+               criado_em: new Date().toISOString(),
+            });
+          } else if (data.status === 'rejected' || data.status === 'recusado') {
+            clearInterval(interval);
+            setPixData(null);
+            setResultado({
+               id: "mock",
+               numero_pedido: pixData.pedidoId,
+               restaurante_id: restaurante?.id || "",
+               restaurante_nome: restaurante?.nome_fantasia || "",
+               itens: [],
+               subtotal_centavos: subtotalCentavos,
+               frete_centavos: freteCentavos,
+               total_centavos: totalCentavos,
+               cartao_ultimos4: "PIX",
+               cartao_bandeira: "PIX",
+               status: "recusado",
+               criado_em: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Erro no polling do PIX", e);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pixData, restaurante, subtotalCentavos, freteCentavos, totalCentavos]);
 
   useEffect(() => {
     const list = listarCartoes();
@@ -146,7 +196,6 @@ const CheckoutPage = () => {
         restaurant_id: restaurante.id,
         payment: {
           method: paymentMethod,
-          gateway_token: paymentMethod === "CREDIT_CARD" ? cartaoSelecionado?.token : undefined,
           change_for: paymentMethod === "CASH" && changeFor ? parseFloat(changeFor.replace(",", ".")) : undefined,
         },
         coupon_code: cupomAplicado?.codigo || undefined,
@@ -168,29 +217,80 @@ const CheckoutPage = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        toast({ title: "Erro ao processar pedido", description: data.error || "Tente novamente.", variant: "destructive" });
+        toast({ title: "Erro ao criar pedido", description: data.error || "Tente novamente.", variant: "destructive" });
         return;
       }
 
-      // Preenche mock do histórico para a tela de resultado exibir
-      setResultado({
-        id: "mock",
-        numero_pedido: data.order_id || "ZP-" + Date.now().toString().slice(-8),
-        restaurante_id: restaurante.id,
-        restaurante_nome: restaurante.nome_fantasia,
-        itens: [],
-        subtotal_centavos: subtotalCentavos,
-        frete_centavos: freteCentavos,
-        total_centavos: totalCentavos,
-        cartao_ultimos4: paymentMethod === "CREDIT_CARD" ? cartaoSelecionado?.ultimos4 || "" : paymentMethod,
-        cartao_bandeira: paymentMethod === "CREDIT_CARD" ? cartaoSelecionado?.bandeira || "" : "App",
-        status: "aprovado",
-        criado_em: new Date().toISOString(),
-      });
+      const orderId = data.order_id || "ZP-" + Date.now().toString().slice(-8);
 
-      await clearCart();
-    } catch (error) {
-      toast({ title: "Erro de conexão", description: "Verifique sua conexão e tente novamente.", variant: "destructive" });
+      if (paymentMethod === "CREDIT_CARD") {
+        const resPayment = await fetchApi("/pagamentos/cartao", {
+          method: "POST",
+          body: JSON.stringify({
+            pedido_id: orderId,
+            token: cartaoSelecionado?.token,
+            payment_method_id: cartaoSelecionado?.bandeira.toLowerCase() || "visa",
+            payer: { email: "cliente@teste.com", first_name: "Cliente", last_name: "Teste" }
+          })
+        });
+        const paymentData = await resPayment.json();
+        if (!resPayment.ok) throw new Error(paymentData.error || "Pagamento recusado.");
+
+        setResultado({
+          id: paymentData.id || "mock",
+          numero_pedido: orderId,
+          restaurante_id: restaurante.id,
+          restaurante_nome: restaurante.nome_fantasia,
+          itens: [],
+          subtotal_centavos: subtotalCentavos,
+          frete_centavos: freteCentavos,
+          total_centavos: totalCentavos,
+          cartao_ultimos4: cartaoSelecionado?.ultimos4 || "",
+          cartao_bandeira: cartaoSelecionado?.bandeira || "",
+          status: paymentData.status === "approved" || paymentData.status === "aprovado" ? "aprovado" : "recusado",
+          criado_em: new Date().toISOString(),
+        });
+        await clearCart();
+
+      } else if (paymentMethod === "PIX") {
+        const resPix = await fetchApi("/pagamentos/pix", {
+          method: "POST",
+          body: JSON.stringify({
+            pedido_id: orderId,
+            payer: { email: "cliente@teste.com", first_name: "Cliente", last_name: "Teste" }
+          })
+        });
+        const pixDataRes = await resPix.json();
+        if (!resPix.ok) throw new Error(pixDataRes.error || "Erro ao gerar PIX");
+
+        setPixData({
+          qrCodeBase64: pixDataRes.pix_qr_code_base64,
+          qrCodeCopiaCola: pixDataRes.pix_qr_code,
+          pedidoId: orderId
+        });
+        await clearCart();
+
+      } else {
+        // Dinheiro ou Maquininha
+        setResultado({
+          id: "mock",
+          numero_pedido: orderId,
+          restaurante_id: restaurante.id,
+          restaurante_nome: restaurante.nome_fantasia,
+          itens: [],
+          subtotal_centavos: subtotalCentavos,
+          frete_centavos: freteCentavos,
+          total_centavos: totalCentavos,
+          cartao_ultimos4: paymentMethod,
+          cartao_bandeira: "App",
+          status: "pendente",
+          criado_em: new Date().toISOString(),
+        });
+        await clearCart();
+      }
+
+    } catch (error: any) {
+      toast({ title: "Erro de pagamento", description: error.message || "Tente novamente.", variant: "destructive" });
     } finally {
       setProcessing(false);
     }
@@ -281,6 +381,55 @@ const CheckoutPage = () => {
               </button>
             </div>
           </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PIX Waiting screen ───────────────────────────────────────────────────────
+  if (pixData) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
+          <div className="container flex items-center justify-center h-14">
+            <h1 className="text-base font-extrabold text-foreground">Pagamento PIX</h1>
+          </div>
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+           <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-sm text-center bg-card border border-border p-6 rounded-3xl shadow-sm"
+           >
+              <div className="flex justify-center mb-4">
+                <div className="p-4 rounded-2xl bg-primary/10">
+                  <QrCode size={40} className="text-primary" />
+                </div>
+              </div>
+              <h2 className="text-xl font-extrabold text-foreground mb-2">Pague com PIX</h2>
+              <p className="text-sm text-muted-foreground mb-6">Escaneie o QR Code abaixo ou copie o código PIX para concluir o pagamento.</p>
+              
+              <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-sm border border-border">
+                <img src={`data:image/png;base64,${pixData.qrCodeBase64}`} alt="QR Code PIX" className="w-48 h-48 object-contain" />
+              </div>
+              
+              <div className="space-y-3">
+                 <button 
+                   onClick={() => {
+                      navigator.clipboard.writeText(pixData.qrCodeCopiaCola);
+                      toast({ title: "Copiado!", description: "Código PIX Copia e Cola copiado para a área de transferência." });
+                   }}
+                   className="w-full h-11 rounded-xl bg-muted text-foreground font-bold hover:bg-muted/80 transition-colors"
+                 >
+                   Copiar código PIX
+                 </button>
+                 
+                 <div className="flex items-center justify-center gap-2 text-sm font-medium text-primary mt-4">
+                    <Loader2 size={16} className="animate-spin" />
+                    Aguardando confirmação...
+                 </div>
+              </div>
+           </motion.div>
         </div>
       </div>
     );
