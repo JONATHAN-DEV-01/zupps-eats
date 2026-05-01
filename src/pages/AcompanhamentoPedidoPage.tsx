@@ -26,6 +26,7 @@ import {
   avancarStatus,
   buscarPedidoTracking,
   cancelarPedido,
+  criarPedidoTracking,
   podeCancelar,
 } from "@/lib/orderTracking";
 import { formatCentavos } from "@/lib/payments";
@@ -64,24 +65,30 @@ const AcompanhamentoPedidoPage = () => {
   const statusTimerRef = useRef<number | null>(null);
   const moveTimerRef = useRef<number | null>(null);
 
-  // Carrega pedido inicial
+  // Carrega pedido inicial — se não existir, cria um pedido demo
   useEffect(() => {
-    if (!numeroPedido) {
-      navigate("/meus-pedidos");
-      return;
-    }
-    const found = buscarPedidoTracking(numeroPedido);
+    const id = numeroPedido || "DEMO-" + Date.now().toString().slice(-6);
+    let found = buscarPedidoTracking(id);
     if (!found) {
-      toast({
-        title: "Pedido não encontrado",
-        description: "Não foi possível localizar este pedido.",
-        variant: "destructive",
+      found = criarPedidoTracking({
+        numero_pedido: id,
+        restaurante_nome: "Burguer Master",
+        total_centavos: 6780,
+        itens: [
+          { nome: "Master Cheeseburger", quantidade: 1, preco_centavos: 3290 },
+          { nome: "Batata Frita Crocante (G)", quantidade: 1, preco_centavos: 1800 },
+          { nome: "Refrigerante Lata 350ml", quantidade: 2, preco_centavos: 750 },
+        ],
+        cliente_endereco: "Rua das Flores, 123 - Centro",
       });
-      navigate("/meus-pedidos");
-      return;
+      toast({
+        title: "Pedido demo criado",
+        description: "Você está visualizando um pedido de demonstração.",
+      });
     }
     setPedido(found);
-  }, [numeroPedido, navigate, toast]);
+  }, [numeroPedido, toast]);
+
 
   // Avança status automaticamente (RN-01 — fluxo linear)
   useEffect(() => {
