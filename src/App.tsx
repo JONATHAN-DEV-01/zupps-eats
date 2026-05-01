@@ -30,6 +30,7 @@ import BuscaPage from "./pages/BuscaPage";
 import CarrinhoPage from "./pages/CarrinhoPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import MeusPedidosPage from "./pages/MeusPedidosPage";
+import AcompanhamentoPedidoPage from "./pages/AcompanhamentoPedidoPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/carrinho" element={<CarrinhoPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/meus-pedidos" element={<MeusPedidosPage />} />
+          <Route path="/acompanhar-pedido/:numeroPedido" element={<AcompanhamentoPedidoPage />} />
 
           {/* Restaurant Login */}
           <Route path="/login-restaurante" element={<LoginRestaurantePage />} />
