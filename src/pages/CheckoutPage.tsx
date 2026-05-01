@@ -36,6 +36,7 @@ import {
   validarValidade,
 } from "@/lib/payments";
 import { useToast } from "@/hooks/use-toast";
+import { criarPedidoTracking } from "@/lib/orderTracking";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
