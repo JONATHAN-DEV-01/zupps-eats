@@ -67,6 +67,7 @@ const App = () => (
           <Route path="/carrinho" element={<CarrinhoPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/meus-pedidos" element={<MeusPedidosPage />} />
+          <Route path="/acompanhar-pedido" element={<AcompanhamentoPedidoPage />} />
           <Route path="/acompanhar-pedido/:numeroPedido" element={<AcompanhamentoPedidoPage />} />
 
           {/* Restaurant Login */}
