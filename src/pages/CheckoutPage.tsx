@@ -105,20 +105,8 @@ const CheckoutPage = () => {
           if (data.status === 'approved' || data.status === 'aprovado') {
             clearInterval(interval);
             setPixData(null);
-            setResultado({
-               id: "mock",
-               numero_pedido: pixData.pedidoId,
-               restaurante_id: restaurante?.id || "",
-               restaurante_nome: restaurante?.nome_fantasia || "",
-               itens: [],
-               subtotal_centavos: subtotalCentavos,
-               frete_centavos: freteCentavos,
-               total_centavos: totalCentavos,
-               cartao_ultimos4: "PIX",
-               cartao_bandeira: "PIX",
-               status: "aprovado",
-               criado_em: new Date().toISOString(),
-            });
+            // Tracking já foi criado ao gerar o PIX — apenas redireciona
+            navigate(`/acompanhar-pedido/${pixData.pedidoId}`, { replace: true });
           } else if (data.status === 'rejected' || data.status === 'recusado') {
             clearInterval(interval);
             setPixData(null);
