@@ -36,6 +36,7 @@ import {
   validarValidade,
 } from "@/lib/payments";
 import { useToast } from "@/hooks/use-toast";
+import { criarPedidoTracking } from "@/lib/orderTracking";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -104,20 +105,8 @@ const CheckoutPage = () => {
           if (data.status === 'approved' || data.status === 'aprovado') {
             clearInterval(interval);
             setPixData(null);
-            setResultado({
-               id: "mock",
-               numero_pedido: pixData.pedidoId,
-               restaurante_id: restaurante?.id || "",
-               restaurante_nome: restaurante?.nome_fantasia || "",
-               itens: [],
-               subtotal_centavos: subtotalCentavos,
-               frete_centavos: freteCentavos,
-               total_centavos: totalCentavos,
-               cartao_ultimos4: "PIX",
-               cartao_bandeira: "PIX",
-               status: "aprovado",
-               criado_em: new Date().toISOString(),
-            });
+            // Tracking já foi criado ao gerar o PIX — apenas redireciona
+            navigate(`/acompanhar-pedido/${pixData.pedidoId}`, { replace: true });
           } else if (data.status === 'rejected' || data.status === 'recusado') {
             clearInterval(interval);
             setPixData(null);
@@ -212,6 +201,16 @@ const CheckoutPage = () => {
     handlePagar(true);
   };
 
+  const snapshotItensTracking = () =>
+    itens.map((i) => {
+      const addCentavos = i.adicionais.reduce((s, a) => s + a.preco_centavos, 0);
+      return {
+        nome: i.nome,
+        quantidade: i.quantidade,
+        preco_centavos: i.preco_unitario_centavos + addCentavos,
+      };
+    });
+
   const handlePagar = async (skipCpfCheck = false) => {
     if (!restaurante) return;
     if (paymentMethod === "CREDIT_CARD" && !cartaoSelecionado) return;
@@ -259,6 +258,9 @@ const CheckoutPage = () => {
       }
 
       const orderId = data.order_id || "ZP-" + Date.now().toString().slice(-8);
+      const restauranteNome = restaurante.nome_fantasia;
+      const totalSnapshot = totalCentavos;
+      const itensSnapshot = snapshotItensTracking();
 
       if (paymentMethod === "CREDIT_CARD") {
         const resPayment = await fetchApi("/pagamentos/cartao", {
@@ -273,21 +275,35 @@ const CheckoutPage = () => {
         const paymentData = await resPayment.json();
         if (!resPayment.ok) throw new Error(paymentData.error || "Pagamento recusado.");
 
+        const aprovado = paymentData.status === "approved" || paymentData.status === "aprovado";
+        await clearCart();
+
+        if (aprovado) {
+          // Cria tracking e redireciona automaticamente
+          criarPedidoTracking({
+            numero_pedido: orderId,
+            restaurante_nome: restauranteNome,
+            total_centavos: totalSnapshot,
+            itens: itensSnapshot,
+          });
+          navigate(`/acompanhar-pedido/${orderId}`, { replace: true });
+          return;
+        }
+
         setResultado({
           id: paymentData.id || "mock",
           numero_pedido: orderId,
           restaurante_id: restaurante.id,
-          restaurante_nome: restaurante.nome_fantasia,
+          restaurante_nome: restauranteNome,
           itens: [],
           subtotal_centavos: subtotalCentavos,
           frete_centavos: freteCentavos,
-          total_centavos: totalCentavos,
+          total_centavos: totalSnapshot,
           cartao_ultimos4: cartaoSelecionado?.ultimos4 || "",
           cartao_bandeira: cartaoSelecionado?.bandeira || "",
-          status: paymentData.status === "approved" || paymentData.status === "aprovado" ? "aprovado" : "recusado",
+          status: "recusado",
           criado_em: new Date().toISOString(),
         });
-        await clearCart();
 
       } else if (paymentMethod === "PIX") {
         const cpf = storedCpf();
@@ -307,6 +323,14 @@ const CheckoutPage = () => {
         const pixDataRes = await resPix.json();
         if (!resPix.ok) throw new Error(pixDataRes.error || "Erro ao gerar PIX");
 
+        // Salva tracking pré-criado para redirect quando PIX for aprovado (polling no useEffect)
+        criarPedidoTracking({
+          numero_pedido: orderId,
+          restaurante_nome: restauranteNome,
+          total_centavos: totalSnapshot,
+          itens: itensSnapshot,
+        });
+
         setPixData({
           qrCodeBase64: pixDataRes.pix_qr_code_base64,
           qrCodeCopiaCola: pixDataRes.pix_qr_code,
@@ -315,22 +339,16 @@ const CheckoutPage = () => {
         await clearCart();
 
       } else {
-        // Dinheiro ou Maquininha
-        setResultado({
-          id: "mock",
-          numero_pedido: orderId,
-          restaurante_id: restaurante.id,
-          restaurante_nome: restaurante.nome_fantasia,
-          itens: [],
-          subtotal_centavos: subtotalCentavos,
-          frete_centavos: freteCentavos,
-          total_centavos: totalCentavos,
-          cartao_ultimos4: paymentMethod,
-          cartao_bandeira: "App",
-          status: "pendente",
-          criado_em: new Date().toISOString(),
-        });
+        // Dinheiro ou Maquininha — pedido aceito, vai direto para acompanhamento
         await clearCart();
+        criarPedidoTracking({
+          numero_pedido: orderId,
+          restaurante_nome: restauranteNome,
+          total_centavos: totalSnapshot,
+          itens: itensSnapshot,
+        });
+        navigate(`/acompanhar-pedido/${orderId}`, { replace: true });
+        return;
       }
 
     } catch (error: any) {
