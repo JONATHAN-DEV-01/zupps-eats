@@ -26,6 +26,7 @@ import {
   avancarStatus,
   buscarPedidoTracking,
   cancelarPedido,
+  criarPedidoTracking,
   podeCancelar,
 } from "@/lib/orderTracking";
 import { formatCentavos } from "@/lib/payments";
