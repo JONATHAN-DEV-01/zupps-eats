@@ -18,21 +18,23 @@ const CadastroLogoRestaurantePage = () => {
   const [cover, setCover] = useState<File | null>(null);
   const [logo, setLogo] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(
-    isEditing && userProfile?.capa ? resolveImageUrl(userProfile.capa) : null
+    userProfile?.capa ? resolveImageUrl(userProfile.capa) : null
   );
   const [logoPreview, setLogoPreview] = useState<string | null>(
-    isEditing && userProfile?.logotipo ? resolveImageUrl(userProfile.logotipo) : null
+    userProfile?.logotipo ? resolveImageUrl(userProfile.logotipo) : null
   );
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
   const coverRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
 
-  // Sync with latest API data on mount
+  // Busca as imagens existentes do restaurante ao abrir a página.
+  // Roda sempre que há um restId — funciona tanto no modo edição (logado)
+  // quanto sem interferir no fluxo de cadastro (API retorna [] para restaurante ainda não criado).
   useEffect(() => {
     const loadLatestData = async () => {
       const restId = userProfile?.id || userProfile?.restaurante_id;
-      if (!isEditing || !restId) return;
+      if (!restId) return;
 
       setFetchingData(true);
       try {
@@ -41,22 +43,24 @@ const CadastroLogoRestaurantePage = () => {
           const data = await response.json();
           if (data.length > 0) {
             const rest = data[0];
+            // Exibe as imagens já salvas nos inputs de preview
             if (rest.logotipo) setLogoPreview(resolveImageUrl(rest.logotipo));
             if (rest.capa) setCoverPreview(resolveImageUrl(rest.capa));
-            
-            // Update localStorage to keep it fresh
+
+            // Mantém o localStorage atualizado
             const updatedProfile = { ...userProfile, ...rest };
             localStorage.setItem("user_profile", JSON.stringify(updatedProfile));
           }
         }
       } catch (err) {
-        console.error("Erro ao atualizar dados prévios", err);
+        console.error("Erro ao carregar imagens do restaurante", err);
       } finally {
         setFetchingData(false);
       }
     };
     loadLatestData();
-  }, [isEditing, userProfile?.id, userProfile?.restaurante_id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.id, userProfile?.restaurante_id]);
 
   const handleFile = (file: File | null, type: "cover" | "logo") => {
     if (!file) return;

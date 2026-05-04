@@ -57,6 +57,8 @@ const CheckoutPage = () => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
 
+  const profile = getUserProfile();
+
   // Form states
   const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD" | "PIX" | "CASH" | "CARD_MACHINE">("CREDIT_CARD");
   const [changeFor, setChangeFor] = useState("");
@@ -220,8 +222,10 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Se for PIX e não tiver CPF salvo, abrir modal
-    if (paymentMethod === "PIX" && !skipCpfCheck && !storedCpf()) {
+    const cpf = profile?.cpf || storedCpf();
+
+    // Se for PIX ou Cartão e não tiver CPF salvo (nem no perfil nem na sessão), abrir modal
+    if ((paymentMethod === "PIX" || paymentMethod === "CREDIT_CARD") && !skipCpfCheck && !cpf) {
       setShowCpfModal(true);
       return;
     }
@@ -269,7 +273,12 @@ const CheckoutPage = () => {
             pedido_id: orderId,
             token: cartaoSelecionado?.token,
             payment_method_id: cartaoSelecionado?.bandeira.toLowerCase() || "visa",
-            payer: { email: "cliente@teste.com", first_name: "Cliente", last_name: "Teste" }
+            payer: { 
+              email: profile?.email || "cliente@teste.com", 
+              first_name: profile?.nome || "Cliente", 
+              last_name: profile?.sobrenome || "Teste",
+              identification: { type: "CPF", number: cpf }
+            }
           })
         });
         const paymentData = await resPayment.json();
@@ -306,8 +315,6 @@ const CheckoutPage = () => {
         });
 
       } else if (paymentMethod === "PIX") {
-        const cpf = storedCpf();
-        const profile = getUserProfile();
         const resPix = await fetchApi("/pagamentos/pix", {
           method: "POST",
           body: JSON.stringify({
@@ -606,8 +613,12 @@ const CheckoutPage = () => {
               <MapPin size={20} className="text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">Rua das Flores, 123 - Centro</p>
-              <p className="text-xs text-muted-foreground">Complemento: Apto 204</p>
+              <p className="text-sm font-bold text-foreground truncate">
+                {profile?.logradouro ? `${profile.logradouro}, ${profile.numero || 'S/N'}${profile.bairro ? ` - ${profile.bairro}` : ''}` : 'Endereço não cadastrado'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {profile?.complemento ? `Complemento: ${profile.complemento}` : profile?.cidade ? `${profile.cidade} - ${profile.estado}` : 'Clique em trocar para atualizar'}
+              </p>
             </div>
             <button className="text-xs font-bold text-primary hover:underline shrink-0">
               Trocar
