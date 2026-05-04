@@ -620,10 +620,10 @@ const CheckoutPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground truncate">
-                {profile?.logradouro ? `${profile.logradouro}, ${profile.numero || 'S/N'}${profile.bairro ? ` - ${profile.bairro}` : ''}` : 'Endereço não cadastrado'}
+                {profile?.endereco?.logradouro ? `${profile.endereco.logradouro}, ${profile.endereco.numero || 'S/N'}${profile.endereco.bairro ? ` - ${profile.endereco.bairro}` : ''}` : 'Endereço não cadastrado'}
               </p>
               <p className="text-xs text-muted-foreground">
-                {profile?.complemento ? `Complemento: ${profile.complemento}` : profile?.cidade ? `${profile.cidade} - ${profile.estado}` : 'Clique em trocar para atualizar'}
+                {profile?.endereco?.complemento ? `Complemento: ${profile.endereco.complemento}` : profile?.endereco?.cidade ? `${profile.endereco.cidade} - ${profile.endereco.estado}` : 'Clique em trocar para atualizar'}
               </p>
             </div>
             <button className="text-xs font-bold text-primary hover:underline shrink-0">
