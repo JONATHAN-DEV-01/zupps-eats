@@ -107,8 +107,21 @@ const CheckoutPage = () => {
           if (data.status === 'approved' || data.status === 'aprovado') {
             clearInterval(interval);
             setPixData(null);
-            // Tracking já foi criado ao gerar o PIX — apenas redireciona
-            navigate(`/acompanhar-pedido/${pixData.pedidoId}`, { replace: true });
+            // Tracking já foi criado ao gerar o PIX — exibe tela de sucesso
+            setResultado({
+               id: data.id || "mock",
+               numero_pedido: pixData.pedidoId,
+               restaurante_id: restaurante?.id || "",
+               restaurante_nome: restaurante?.nome_fantasia || "",
+               itens: [],
+               subtotal_centavos: subtotalCentavos,
+               frete_centavos: freteCentavos,
+               total_centavos: totalCentavos,
+               cartao_ultimos4: "PIX",
+               cartao_bandeira: "PIX",
+               status: "aprovado",
+               criado_em: new Date().toISOString(),
+            });
           } else if (data.status === 'rejected' || data.status === 'recusado') {
             clearInterval(interval);
             setPixData(null);
@@ -294,14 +307,27 @@ const CheckoutPage = () => {
         await clearCart();
 
         if (aprovado) {
-          // Cria tracking e redireciona automaticamente
+          // Cria tracking e exibe notificação de sucesso
           criarPedidoTracking({
             numero_pedido: orderId,
             restaurante_nome: restauranteNome,
             total_centavos: totalSnapshot,
             itens: itensSnapshot,
           });
-          navigate(`/acompanhar-pedido/${orderId}`, { replace: true });
+          setResultado({
+            id: paymentData.id || "mock",
+            numero_pedido: orderId,
+            restaurante_id: restaurante.id,
+            restaurante_nome: restauranteNome,
+            itens: [],
+            subtotal_centavos: subtotalCentavos,
+            frete_centavos: freteCentavos,
+            total_centavos: totalSnapshot,
+            cartao_ultimos4: cartaoSelecionado?.ultimos4 || "",
+            cartao_bandeira: cartaoSelecionado?.bandeira || "",
+            status: "aprovado",
+            criado_em: new Date().toISOString(),
+          });
           return;
         }
 
@@ -352,7 +378,7 @@ const CheckoutPage = () => {
         await clearCart();
 
       } else {
-        // Dinheiro ou Maquininha — pedido aceito, vai direto para acompanhamento
+        // Dinheiro ou Maquininha — pedido aceito, exibe notificação
         await clearCart();
         criarPedidoTracking({
           numero_pedido: orderId,
@@ -360,7 +386,20 @@ const CheckoutPage = () => {
           total_centavos: totalSnapshot,
           itens: itensSnapshot,
         });
-        navigate(`/acompanhar-pedido/${orderId}`, { replace: true });
+        setResultado({
+          id: "mock",
+          numero_pedido: orderId,
+          restaurante_id: restaurante.id,
+          restaurante_nome: restauranteNome,
+          itens: [],
+          subtotal_centavos: subtotalCentavos,
+          frete_centavos: freteCentavos,
+          total_centavos: totalSnapshot,
+          cartao_ultimos4: paymentMethod === "CASH" ? "Dinheiro" : "Maquininha",
+          cartao_bandeira: "",
+          status: "aprovado",
+          criado_em: new Date().toISOString(),
+        });
         return;
       }
 
@@ -445,6 +484,16 @@ const CheckoutPage = () => {
     </div>
   );
 
+  // Auto-redirect após 3 segundos se aprovado
+  useEffect(() => {
+    if (resultado && resultado.status === "aprovado") {
+      const timer = setTimeout(() => {
+        navigate(`/acompanhar-pedido/${resultado.numero_pedido}`, { replace: true });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [resultado, navigate]);
+
   // ─── Result screen ──────────────────────────────────────────────────────────
   if (resultado) {
     const isApproved = resultado.status === "aprovado";
@@ -513,14 +562,14 @@ const CheckoutPage = () => {
                 </button>
               )}
               <button
-                onClick={() => navigate("/meus-pedidos")}
+                onClick={() => isApproved ? navigate(`/acompanhar-pedido/${resultado.numero_pedido}`, { replace: true }) : navigate("/meus-pedidos")}
                 className={`w-full h-11 rounded-xl text-sm font-bold transition-colors ${
                   isApproved
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-muted text-foreground hover:bg-muted/80"
                 }`}
               >
-                Ver meus pedidos
+                {isApproved ? "Acompanhar Pedido" : "Ver meus pedidos"}
               </button>
               <button
                 onClick={() => navigate("/cliente-home")}
