@@ -3,7 +3,7 @@ import { Store, Power, Settings, Clock, ImageIcon, FileText, LogOut, Loader2 } f
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
-import { API_BASE_URL, fetchApi, getUserProfile, logout } from "@/lib/api";
+import { fetchApi, getUserProfile, logout, resolveImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const GerenciaRestaurantePage = () => {
@@ -95,7 +95,7 @@ const GerenciaRestaurantePage = () => {
             <div className="flex items-center gap-4 mb-4">
               <div className="w-16 h-16 rounded-2xl overflow-hidden bg-muted flex items-center justify-center">
                 {restaurant?.logotipo ? (
-                   <img src={`${API_BASE_URL}/${restaurant.logotipo.replace(/\\/g, '/')}`} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
+                   <img src={resolveImageUrl(restaurant.logotipo) ?? ''} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
                 ) : (
                   <Store size={28} className="text-muted-foreground" />
                 )}

@@ -2,7 +2,7 @@ import { ImageIcon, ArrowRight, Loader2, Upload, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL, fetchApi } from "@/lib/api";
+import { fetchApi, resolveImageUrl } from "@/lib/api";
 import AuthLayout from "@/components/AuthLayout";
 import foodImage from "@/assets/food-cadastro-restaurante.jpg";
 
@@ -18,10 +18,10 @@ const CadastroLogoRestaurantePage = () => {
   const [cover, setCover] = useState<File | null>(null);
   const [logo, setLogo] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(
-    isEditing && userProfile?.capa ? `${API_BASE_URL}/${userProfile.capa.replace(/\\/g, '/')}` : null
+    isEditing && userProfile?.capa ? resolveImageUrl(userProfile.capa) : null
   );
   const [logoPreview, setLogoPreview] = useState<string | null>(
-    isEditing && userProfile?.logotipo ? `${API_BASE_URL}/${userProfile.logotipo.replace(/\\/g, '/')}` : null
+    isEditing && userProfile?.logotipo ? resolveImageUrl(userProfile.logotipo) : null
   );
   const [loading, setLoading] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
@@ -41,8 +41,8 @@ const CadastroLogoRestaurantePage = () => {
           const data = await response.json();
           if (data.length > 0) {
             const rest = data[0];
-            if (rest.logotipo) setLogoPreview(`${API_BASE_URL}/${rest.logotipo.replace(/\\/g, '/')}`);
-            if (rest.capa) setCoverPreview(`${API_BASE_URL}/${rest.capa.replace(/\\/g, '/')}`);
+            if (rest.logotipo) setLogoPreview(resolveImageUrl(rest.logotipo));
+            if (rest.capa) setCoverPreview(resolveImageUrl(rest.capa));
             
             // Update localStorage to keep it fresh
             const updatedProfile = { ...userProfile, ...rest };

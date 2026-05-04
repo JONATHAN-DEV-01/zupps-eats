@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 // Importamos o API_BASE_URL para padronizar
-import { fetchApi, getUserProfile, removeAuthToken, API_BASE_URL } from "@/lib/api";
+import { fetchApi, getUserProfile, removeAuthToken, resolveImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -111,7 +111,7 @@ const RestauranteHomePage = () => {
               <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted flex items-center justify-center flex-shrink-0 border border-border">
                 {restaurant?.logotipo ? (
                   // Tratamento corrigido para o caminho da imagem usando API_BASE_URL e replace
-                  <img src={`${API_BASE_URL}/${restaurant.logotipo.replace(/\\/g, '/')}`} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
+                  <img src={resolveImageUrl(restaurant.logotipo) ?? ''} alt={restaurant.nome_fantasia} className="w-full h-full object-cover" />
                 ) : (
                   <Store size={24} className="text-muted-foreground" />
                 )}

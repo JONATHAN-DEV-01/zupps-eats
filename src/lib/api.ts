@@ -36,6 +36,23 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   return response;
 };
 
+/**
+ * Resolve uma URL de imagem salva no banco de dados para um src válido de <img>.
+ *
+ * O banco pode conter dois formatos legados:
+ *  1. URL completa do Supabase: "https://xxx.supabase.co/storage/v1/object/public/..."
+ *  2. Caminho relativo local (legado): "uploads/logos/foto.jpg"
+ *
+ * Caso 1 → retorna a URL diretamente (sem prefixar API_BASE_URL).
+ * Caso 2 → prefixa com API_BASE_URL para servir via backend.
+ * Null/undefined → retorna null.
+ */
+export const resolveImageUrl = (path: string | null | undefined): string | null => {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_BASE_URL}/${path.replace(/\\/g, "/")}`;
+};
+
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export interface Categoria {

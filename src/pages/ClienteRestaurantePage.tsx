@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Package, Store, Search, X, Plus, Minus, ShoppingCart, Check, Loader2 } from "lucide-react";
-import { fetchApi, API_BASE_URL, fetchGruposAdicionais, GrupoAdicionaisServer } from "@/lib/api";
+import { fetchApi, resolveImageUrl, fetchGruposAdicionais, GrupoAdicionaisServer } from "@/lib/api";
 import { useCart, CartRestaurant, CartAdditional } from "@/contexts/CartContext";
 import FloatingCartButton from "@/components/FloatingCartButton";
 import { useToast } from "@/hooks/use-toast";
@@ -164,7 +164,7 @@ const ClienteRestaurantePage = () => {
       {!loading && restaurante?.capa && restaurante.capa !== "null" && (
         <div className="w-full h-48 md:h-64 relative">
           <img
-            src={`${API_BASE_URL}/${restaurante.capa.replace(/\\/g, '/')}`}
+            src={resolveImageUrl(restaurante.capa) ?? ''}
             alt="Capa do restaurante"
             className="w-full h-full object-cover"
           />
@@ -183,7 +183,7 @@ const ClienteRestaurantePage = () => {
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-muted flex items-center justify-center border border-border shadow-sm flex-shrink-0">
               {restaurante.logotipo ? (
                 <img
-                  src={`${API_BASE_URL}/${restaurante.logotipo.replace(/\\/g, '/')}`}
+                  src={resolveImageUrl(restaurante.logotipo) ?? ''}
                   alt={restaurante.nome_fantasia}
                   className="w-full h-full object-cover"
                 />
@@ -280,7 +280,7 @@ const ClienteRestaurantePage = () => {
                 <div className="w-20 h-20 rounded-xl bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border shadow-sm">
                   {produto.imagem ? (
                     <img
-                      src={`${API_BASE_URL}/uploads/produtos/${produto.imagem}`}
+                      src={resolveImageUrl(produto.imagem) ?? ''}
                       alt={produto.nome}
                       className="w-full h-full object-cover"
                     />
@@ -333,7 +333,7 @@ const ClienteRestaurantePage = () => {
                   <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border/50">
                     {selectedProduct.imagem ? (
                       <img
-                        src={`${API_BASE_URL}/uploads/produtos/${selectedProduct.imagem}`}
+                        src={resolveImageUrl(selectedProduct.imagem) ?? ''}
                         alt={selectedProduct.nome}
                         className="w-full h-full object-cover"
                       />

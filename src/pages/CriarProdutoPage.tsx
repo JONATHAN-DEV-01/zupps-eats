@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ImageIcon, Plus, Loader2, Save, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { API_BASE_URL, fetchApi } from "@/lib/api";
+import { API_BASE_URL, fetchApi, resolveImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 
@@ -51,7 +51,7 @@ const CriarProdutoPage = () => {
               categoria_id: data.categoria_id || "",
               disponivel: data.disponivel !== false,
             });
-            if (data.imagem) setImagePreview(`${API_BASE_URL}/${data.imagem.replace(/\\/g, '/')}`);
+            if (data.imagem) setImagePreview(resolveImageUrl(data.imagem));
           }
         } catch {
           toast({ title: "Erro", description: "Falha ao carregar produto.", variant: "destructive" });
@@ -68,18 +68,8 @@ const CriarProdutoPage = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Validar Resolução Mínima (800x800)
-        const img = new Image();
-        img.onload = () => {
-          if (img.width < 800 || img.height < 800) {
-            toast({ title: "Baixa resolução", description: "A imagem deve ter no mínimo 800x800 pixels.", variant: "destructive" });
-            return;
-          }
-          // Passou em todas as validações
-          setImagePreview(img.src);
-          setImageFile(file);
-        };
-        img.src = reader.result as string;
+        setImagePreview(reader.result as string);
+        setImageFile(file);
       };
       reader.readAsDataURL(file);
     }

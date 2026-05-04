@@ -7,7 +7,7 @@ import {
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart, CartItem } from "@/contexts/CartContext";
-import { API_BASE_URL } from "@/lib/api";
+import { resolveImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const formatCentavos = (centavos: number) =>
@@ -155,7 +155,7 @@ const CarrinhoPage = () => {
             <div className="w-10 h-10 rounded-xl bg-muted overflow-hidden flex items-center justify-center flex-shrink-0 border border-border/50">
               {restaurante.logotipo ? (
                 <img
-                  src={`${API_BASE_URL}/${restaurante.logotipo.replace(/\\/g, "/")}`}
+                  src={resolveImageUrl(restaurante.logotipo) ?? ''}
                   alt={restaurante.nome_fantasia}
                   className="w-full h-full object-cover"
                 />
@@ -208,7 +208,7 @@ const CarrinhoPage = () => {
               <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border/50">
                 {item.imagem ? (
                   <img
-                    src={`${API_BASE_URL}/uploads/produtos/${item.imagem}`}
+                    src={resolveImageUrl(item.imagem) ?? ''}
                     alt={item.nome}
                     className="w-full h-full object-cover"
                   />

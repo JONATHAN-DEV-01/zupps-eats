@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Edit2, Trash2, Package, Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { API_BASE_URL, fetchApi } from "@/lib/api";
+import { API_BASE_URL, fetchApi, resolveImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIAS = ["Todos", "Burgers", "Bebidas", "Sobremesas", "Geral"];
@@ -223,7 +223,7 @@ const GerenciaCardapioPage = () => {
                   {/* Image */}
                   <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 bg-muted relative">
                     {product.imagem ? (
-                      <img src={`${API_BASE_URL}/${product.imagem.replace(/\\/g, '/')}`} alt={product.nome} className="w-full h-full object-cover" />
+                      <img src={resolveImageUrl(product.imagem) ?? ''} alt={product.nome} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         <Package size={28} />
