@@ -282,7 +282,13 @@ const CheckoutPage = () => {
           })
         });
         const paymentData = await resPayment.json();
-        if (!resPayment.ok) throw new Error(paymentData.error || "Pagamento recusado.");
+        if (!resPayment.ok) {
+           let msg = paymentData.error || "Pagamento recusado.";
+           if (paymentData.details && paymentData.details.message) {
+              msg += " (" + paymentData.details.message + ")";
+           }
+           throw new Error(msg);
+        }
 
         const aprovado = paymentData.status === "approved" || paymentData.status === "aprovado";
         await clearCart();
