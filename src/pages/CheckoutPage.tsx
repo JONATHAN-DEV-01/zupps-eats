@@ -551,8 +551,14 @@ const CheckoutPage = () => {
                 <span className="font-semibold text-foreground truncate ml-2">{resultado.restaurante_nome}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Cartão</span>
-                <span className="font-semibold text-foreground">{resultado.cartao_bandeira} •••• {resultado.cartao_ultimos4}</span>
+                <span className="text-muted-foreground">Pagamento</span>
+                <span className="font-semibold text-foreground">
+                  {resultado.cartao_bandeira === "PIX"
+                    ? "PIX"
+                    : resultado.cartao_bandeira === "Dinheiro" || resultado.cartao_bandeira === "Maquininha"
+                    ? resultado.cartao_bandeira
+                    : `${resultado.cartao_bandeira} •••• ${resultado.cartao_ultimos4}`}
+                </span>
               </div>
               <div className="h-px bg-border my-1" />
               <div className="flex justify-between">
