@@ -56,6 +56,7 @@ const CarrinhoPage = () => {
     setLoadingCheckout(true);
     try {
       const result = await freezeCart();
+      toast({ title: "Pedido confirmado!", description: "Indo para a etapa de pagamento..." });
       navigate("/checkout", { state: { token_checkout: result?.token_checkout ?? null } });
     } catch {
       toast({ title: "Erro ao processar carrinho", variant: "destructive" });
