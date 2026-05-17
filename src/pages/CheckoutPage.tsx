@@ -18,6 +18,8 @@ import {
   QrCode,
   Smartphone,
   Banknote,
+  Bike,
+  Zap,
 } from "lucide-react";
 import { fetchApi, getUserProfile } from "@/lib/api";
 import { useCart } from "@/contexts/CartContext";
@@ -63,6 +65,12 @@ const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState<"CREDIT_CARD" | "PIX" | "CASH" | "CARD_MACHINE">("CREDIT_CARD");
   const [changeFor, setChangeFor] = useState("");
   const [notes, setNotes] = useState("");
+  const [tipoEntrega, setTipoEntrega] = useState<"MOTO" | "BICICLETA" | "MOTO_FLASH">("MOTO");
+
+  // Taxa Moto Flash: R$ 5,00 em centavos
+  const TAXA_MOTO_FLASH = 500;
+  const taxaMotoFlash = tipoEntrega === "MOTO_FLASH" ? TAXA_MOTO_FLASH : 0;
+  const totalComMotoFlash = totalCentavos + taxaMotoFlash;
 
   // New card form
   const [numero, setNumero] = useState("");
@@ -247,6 +255,7 @@ const CheckoutPage = () => {
     try {
       const payload = {
         restaurant_id: restaurante.id,
+        delivery_type: tipoEntrega,
         payment: {
           method: paymentMethod,
           change_for: paymentMethod === "CASH" && changeFor ? parseFloat(changeFor.replace(",", ".")) : undefined,
@@ -696,6 +705,84 @@ const CheckoutPage = () => {
           </div>
         </section>
 
+        {/* Tipo de Entrega */}
+        <section>
+          <h2 className="text-sm font-bold text-foreground mb-1">Tipo de Entrega</h2>
+          <p className="text-xs text-muted-foreground mb-3">Escolha como prefere receber seu pedido</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              {
+                key: "MOTO" as const,
+                label: "Moto",
+                sublabel: "35–45 min",
+                taxaExtra: 0,
+                icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5.5" cy="17.5" r="3.5"/>
+                    <circle cx="18.5" cy="17.5" r="3.5"/>
+                    <path d="M15 6h-5l-3 7h11.5"/>
+                    <path d="M15 6l2 4"/>
+                    <path d="M3 14h3.5"/>
+                  </svg>
+                ),
+              },
+              {
+                key: "BICICLETA" as const,
+                label: "Bicicleta",
+                sublabel: "45–60 min",
+                taxaExtra: 0,
+                icon: <Bike size={22} />,
+              },
+              {
+                key: "MOTO_FLASH" as const,
+                label: "Moto Flash",
+                sublabel: "15–25 min",
+                taxaExtra: TAXA_MOTO_FLASH,
+                icon: <Zap size={22} />,
+              },
+            ] as const).map(({ key, label, sublabel, taxaExtra, icon }) => {
+              const selected = tipoEntrega === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setTipoEntrega(key)}
+                  className={`relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border-2 transition-all ${
+                    selected
+                      ? "border-primary bg-primary/8 text-primary"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {taxaExtra > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full leading-tight">
+                      +R$5
+                    </span>
+                  )}
+                  <span className={selected ? "text-primary" : "text-muted-foreground"}>
+                    {icon}
+                  </span>
+                  <span className="text-xs font-bold leading-none">{label}</span>
+                  <span className={`text-[10px] font-medium leading-none ${
+                    selected ? "text-primary/70" : "text-muted-foreground/70"
+                  }`}>{sublabel}</span>
+                </button>
+              );
+            })}
+          </div>
+          {tipoEntrega === "MOTO_FLASH" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200"
+            >
+              <Zap size={14} className="text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-700 font-medium">
+                Entrega expressa com taxa adicional de <strong>R$ 5,00</strong>. Prioridade máxima!
+              </p>
+            </motion.div>
+          )}
+        </section>
+
         {/* Formas de Pagamento */}
         <section>
           <h2 className="text-sm font-bold text-foreground mb-3">Forma de pagamento</h2>
@@ -897,6 +984,14 @@ const CheckoutPage = () => {
                 {freteCentavos === 0 ? "Grátis" : formatCentavos(freteCentavos)}
               </span>
             </div>
+            {tipoEntrega === "MOTO_FLASH" && (
+              <div className="flex justify-between">
+                <span className="text-amber-600 flex items-center gap-1">
+                  <Zap size={11} /> Taxa Express
+                </span>
+                <span className="font-semibold text-amber-600">+{formatCentavos(TAXA_MOTO_FLASH)}</span>
+              </div>
+            )}
             <div className="h-px bg-border my-2" />
             <div className="flex justify-between">
               <span className="font-bold text-foreground">Total</span>
@@ -925,7 +1020,7 @@ const CheckoutPage = () => {
                 Processando pagamento...
               </>
             ) : (
-              <>Confirmar e Pagar · {formatCentavos(totalCentavos)}</>
+              <>Confirmar e Pagar · {formatCentavos(totalComMotoFlash)}</>
             )}
           </button>
           {!podePagar && paymentMethod === "CREDIT_CARD" && !cartaoSelecionado && (
