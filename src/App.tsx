@@ -33,6 +33,7 @@ import MeusPedidosPage from "./pages/MeusPedidosPage";
 import AcompanhamentoPedidoPage from "./pages/AcompanhamentoPedidoPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import RelatoriosPage from "./pages/RelatoriosPage";
 
 const queryClient = new QueryClient();
 
