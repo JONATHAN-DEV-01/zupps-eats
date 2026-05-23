@@ -1,5 +1,9 @@
 import { motion } from "framer-motion";
-import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight } from "lucide-react";
+import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight, User, BarChart3 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
@@ -96,10 +100,39 @@ const RestauranteHomePage = () => {
             </div>
             <span className="font-extrabold text-xl text-foreground tracking-tight">Zupps</span>
           </Link>
-          <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors">
-            <LogOut size={16} />
-            <span className="hidden sm:inline">Sair</span>
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-muted transition-colors">
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex items-center justify-center border border-border">
+                  {restaurant?.logotipo ? (
+                    <img src={resolveImageUrl(restaurant.logotipo) ?? ''} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={16} className="text-muted-foreground" />
+                  )}
+                </div>
+                <span className="hidden sm:inline text-sm font-semibold text-foreground max-w-[120px] truncate">
+                  {restaurant?.nome_fantasia || "Perfil"}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-xl">
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Minha conta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/gerencia-restaurante")} className="cursor-pointer gap-2">
+                <Settings size={15} className="text-primary" /> Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/gerencia-cardapio")} className="cursor-pointer gap-2">
+                <FileText size={15} className="text-primary" /> Cardápio
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/relatorios")} className="cursor-pointer gap-2">
+                <BarChart3 size={15} className="text-primary" /> Relatórios
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
+                <LogOut size={15} /> Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
