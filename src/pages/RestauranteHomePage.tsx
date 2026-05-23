@@ -1,5 +1,9 @@
 import { motion } from "framer-motion";
-import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight } from "lucide-react";
+import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight, User, BarChart3 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
