@@ -322,10 +322,12 @@ const RelatoriosPage = () => {
     (best, h) => (h.pedidos > best.pedidos ? h : best),
     { hora: "—", pedidos: 0 }
   );
-  const lentoHora = horarios.reduce(
-    (worst, h) => (h.pedidos > 0 && h.pedidos < worst.pedidos ? h : worst),
-    { hora: "—", pedidos: Infinity }
-  );
+
+  const formatHourRange = (horaStr: string) => {
+    if (horaStr === "—") return "—";
+    const h = parseInt(horaStr);
+    return `${h}h - ${h + 1}h`;
+  };
 
   // ── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -783,7 +785,7 @@ const RelatoriosPage = () => {
             </div>
 
             {/* KPI cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <KpiCard
                 label="Pedidos Concluídos"
                 value={loading ? null : fmt(kpis?.total_pedidos ?? 0)}
@@ -800,19 +802,11 @@ const RelatoriosPage = () => {
               />
               <KpiCard
                 label="Horário de Pico"
-                value={loading ? null : picoHora.hora}
+                value={loading ? null : formatHourRange(picoHora.hora)}
                 sub={`${fmt(picoHora.pedidos)} pedidos no bloco`}
                 icon={Flame}
                 iconBg="bg-orange-100"
                 iconColor="text-orange-500"
-              />
-              <KpiCard
-                label="Horário Mais Lento"
-                value={loading ? null : (lentoHora.pedidos === Infinity ? "—" : lentoHora.hora)}
-                sub={lentoHora.pedidos === Infinity ? "Sem dados" : `${fmt(lentoHora.pedidos)} pedidos`}
-                icon={Clock}
-                iconBg="bg-muted"
-                iconColor="text-muted-foreground"
               />
             </div>
 
