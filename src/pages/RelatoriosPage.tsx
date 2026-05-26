@@ -348,20 +348,7 @@ const RelatoriosPage = () => {
               </div>
             </Link>
 
-            <nav className="hidden md:flex items-center gap-1">
-              <Link to="/restaurante-home" className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                Início
-              </Link>
-              <span className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer">
-                Pedidos
-              </span>
-              <Link to="/gerencia-cardapio" className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                Cardápio
-              </Link>
-              <span className="px-3 py-1.5 rounded-lg text-sm font-semibold text-foreground bg-muted">
-                Relatórios
-              </span>
-            </nav>
+
           </div>
 
           {/* Right: restaurant + refresh + logout */}
