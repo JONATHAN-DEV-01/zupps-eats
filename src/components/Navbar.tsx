@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { MapPin, ChevronDown, Store, User, LogOut } from "lucide-react";
+import { MapPin, ChevronDown, Store, User, LogOut, BarChart3 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { logout } from "@/lib/api";
@@ -68,6 +68,10 @@ const Navbar = () => {
               <Link to="/login-restaurante" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border text-foreground font-semibold text-sm hover:bg-muted transition-colors">
                 <Store size={16} className="text-primary" />
                 Sou Restaurante
+              </Link>
+              <Link to="/relatorios" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border text-foreground font-semibold text-sm hover:bg-muted transition-colors">
+                <BarChart3 size={16} className="text-primary" />
+                Relatórios
               </Link>
               <Link to="/login-cliente" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
                 <User size={16} />
