@@ -45,7 +45,9 @@ const dashFetch = async (endpoint: string, params: Record<string, string>) => {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) {
-    throw new Error("UNAUTHORIZED");
+    const errData = await res.json().catch(() => ({}));
+    console.error("401 Unauthorized ->", errData);
+    throw new Error(errData.error || "UNAUTHORIZED");
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
@@ -283,10 +285,13 @@ const RelatoriosPage = () => {
       setHeatmap(heatD);
       setLastUpdate(new Date());
     } catch (err: any) {
-      if (err.message === "UNAUTHORIZED") {
+      const msg = err.message;
+      if (msg === "UNAUTHORIZED" || msg.includes("Token") || msg.includes("expirado")) {
+        console.warn("Auth error, logging out:", msg);
         handleLogout();
       } else {
-        setError("Não foi possível carregar os dados. Verifique a conexão com o servidor.");
+        console.error("Fetch error:", msg);
+        setError(`Erro: ${msg}`);
       }
     } finally {
       setLoading(false);
