@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Store, LogOut, TrendingUp, ShoppingBag, DollarSign, Receipt,
-  Clock, Truck, XCircle, BarChart3, Calendar as CalendarIcon,
-  ChevronDown, RefreshCw, AlertCircle, Loader2,
+  LogOut, MapPin, ShoppingBag, DollarSign, Receipt, XCircle,
+  Package, TrendingUp, Flame, Clock, RefreshCw, AlertCircle,
+  Calendar as CalendarIcon, ChevronDown, Filter, Search,
+  BarChart3, Map, ArrowUpRight,
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, ComposedChart, Line, Cell, Legend,
 } from "recharts";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -16,105 +17,220 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { removeAuthToken, API_BASE_URL, getAuthToken } from "@/lib/api";
+import { removeAuthToken, API_BASE_URL, getAuthToken, getUserProfile, resolveImageUrl } from "@/lib/api";
 import type { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface RestauranteOpcao {
-  id: string;
-  nome: string;
-}
+type Tab = "regioes" | "mais-vendidos" | "horarios";
 
+interface RestauranteOpcao { id: string; nome: string }
 interface KPIs {
-  total_pedidos: number;
-  receita_bruta: number;
-  ticket_medio: number;
-  taxa_cancelamento: number;
+  total_pedidos: number; receita_bruta: number;
+  ticket_medio: number; taxa_cancelamento: number;
 }
+interface Regiao { bairro: string; cidade: string; pedidos: number; receita: number }
+interface TopProduto { nome: string; qtd: number; receita: number }
+interface HorarioPico { hora: string; pedidos: number }
+interface HeatmapData { matrix: Record<string, number[]>; tabela: { horario: string; pedidos: number }[] }
 
-interface EvolucaoDia {
-  dia: string;
-  valor: number;
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-interface TopProduto {
-  nome: string;
-  qtd: number;
-  receita: number;
-}
-
-interface HorarioPico {
-  hora: string;
-  pedidos: number;
-}
-
-interface Transacao {
-  id: string;
-  data: string;
-  metodo: string;
-  valor: number;
-  status: string;
-}
-
-// ─── API helpers ───────────────────────────────────────────────────────────
-
-const dashboardFetch = async (endpoint: string, params: Record<string, string>) => {
+const dashFetch = async (endpoint: string, params: Record<string, string>) => {
   const token = getAuthToken();
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${API_BASE_URL}${endpoint}?${qs}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`Erro ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 };
 
-// ─── Período options ───────────────────────────────────────────────────────
+const Skeleton = ({ className = "" }: { className?: string }) => (
+  <div className={`animate-pulse rounded-lg bg-muted ${className}`} />
+);
+
+const fmt = (n: number) => n.toLocaleString("pt-BR");
+const fmtR = (n: number) =>
+  `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
+// ─── Period filter buttons ────────────────────────────────────────────────────
 
 const PERIODOS = [
-  { id: "7", label: "Últimos 7 dias" },
+  { id: "1",  label: "Hoje" },
+  { id: "7",  label: "Últimos 7 dias" },
   { id: "30", label: "Últimos 30 dias" },
-  { id: "90", label: "Últimos 90 dias" },
   { id: "custom", label: "Personalizado" },
 ];
 
-const CATEGORY_COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--secondary))",
-  "hsl(var(--accent))",
-  "hsl(var(--muted-foreground))",
-];
+interface PeriodBarProps {
+  periodo: string;
+  setPeriodo: (p: string) => void;
+  dateRange: DateRange | undefined;
+  setDateRange: (d: DateRange | undefined) => void;
+  children?: React.ReactNode;
+}
 
-// ─── Loading skeleton ──────────────────────────────────────────────────────
+const PeriodBar = ({ periodo, setPeriodo, dateRange, setDateRange, children }: PeriodBarProps) => {
+  const periodoLabel =
+    periodo === "custom" && dateRange?.from
+      ? `${format(dateRange.from, "dd/MM", { locale: ptBR })}${dateRange.to ? ` – ${format(dateRange.to, "dd/MM", { locale: ptBR })}` : ""}`
+      : null;
 
-const Skeleton = ({ className = "" }: { className?: string }) => (
-  <div className={`animate-pulse rounded-xl bg-muted ${className}`} />
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {PERIODOS.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => setPeriodo(p.id)}
+          className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border ${
+            periodo === p.id
+              ? "bg-foreground text-background border-foreground"
+              : "bg-transparent text-foreground border-border hover:border-foreground/40"
+          }`}
+        >
+          {p.label}
+        </button>
+      ))}
+
+      {periodo === "custom" && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="rounded-full gap-1.5 h-8 text-sm">
+              <CalendarIcon size={13} />
+              {periodoLabel || "Selecionar datas"}
+              <ChevronDown size={13} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} locale={ptBR} />
+          </PopoverContent>
+        </Popover>
+      )}
+
+      {children}
+    </div>
+  );
+};
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+
+interface KpiCardProps {
+  label: string;
+  value: string | null;
+  sub?: string;
+  icon: React.ElementType;
+  iconBg?: string;
+  iconColor?: string;
+}
+
+const KpiCard = ({ label, value, sub, icon: Icon, iconBg = "bg-primary/10", iconColor = "text-primary" }: KpiCardProps) => (
+  <div className="bg-white border border-border rounded-2xl p-5 shadow-sm">
+    <div className="flex items-start justify-between mb-3">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+        <Icon size={18} className={iconColor} />
+      </div>
+    </div>
+    {value === null ? (
+      <Skeleton className="h-8 w-28" />
+    ) : (
+      <div className="text-2xl font-extrabold text-foreground tracking-tight">{value}</div>
+    )}
+    {sub && <div className="text-[11px] text-muted-foreground mt-1">{sub}</div>}
+  </div>
 );
 
-// ─── Component ─────────────────────────────────────────────────────────────
+// ─── Heatmap component ────────────────────────────────────────────────────────
+
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const HORAS_EXIBIDAS = [0, 3, 6, 9, 12, 15, 18, 21];
+
+const Heatmap = ({ data }: { data: HeatmapData | null }) => {
+  if (!data) return <Skeleton className="h-48 w-full" />;
+
+  const matrix = data.matrix;
+  const maxVal = Math.max(...DIAS_SEMANA.flatMap((d) => matrix[d] ?? [])) || 1;
+
+  const getColor = (v: number) => {
+    if (v === 0) return "#fef3e2";
+    const ratio = v / maxVal;
+    if (ratio < 0.25) return "#fde4b8";
+    if (ratio < 0.5)  return "#f8a642";
+    if (ratio < 0.75) return "#ea6c00";
+    return "#c44d00";
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="inline-block min-w-full">
+        {/* Hour labels */}
+        <div className="flex ml-8 mb-1">
+          {Array.from({ length: 24 }, (_, h) => (
+            <div key={h} className="flex-1 text-center" style={{ minWidth: 22 }}>
+              {HORAS_EXIBIDAS.includes(h) && (
+                <span className="text-[10px] text-muted-foreground">{String(h).padStart(2, "0")}</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Rows */}
+        {DIAS_SEMANA.map((dia) => (
+          <div key={dia} className="flex items-center gap-1 mb-1">
+            <span className="w-7 text-[11px] font-semibold text-muted-foreground shrink-0">{dia}</span>
+            {(matrix[dia] ?? Array(24).fill(0)).map((v, h) => (
+              <div
+                key={h}
+                title={`${dia} ${String(h).padStart(2, "0")}h: ${v} pedidos`}
+                className="rounded-sm transition-opacity hover:opacity-80 cursor-default"
+                style={{ width: 22, height: 22, backgroundColor: getColor(v), flexShrink: 0 }}
+              />
+            ))}
+          </div>
+        ))}
+
+        {/* Legend */}
+        <div className="flex items-center gap-2 mt-3 ml-8">
+          <span className="text-[10px] text-muted-foreground">Menor volume</span>
+          {["#fef3e2", "#fde4b8", "#f8a642", "#ea6c00", "#c44d00"].map((c) => (
+            <div key={c} className="w-4 h-4 rounded-sm" style={{ backgroundColor: c }} />
+          ))}
+          <span className="text-[10px] text-muted-foreground">Maior volume</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const RelatoriosPage = () => {
   const navigate = useNavigate();
+  const restaurant = getUserProfile();
 
-  // Filtros
+  // Navigation
+  const [activeTab, setActiveTab] = useState<Tab>("regioes");
+
+  // Shared filters
   const [restaurantes, setRestaurantes] = useState<RestauranteOpcao[]>([]);
   const [restaurante, setRestaurante] = useState("all");
   const [periodo, setPeriodo] = useState("30");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  // Dashboard data
+  // Per-tab search
+  const [searchRegiao, setSearchRegiao] = useState("");
+
+  // Data
   const [kpis, setKpis] = useState<KPIs | null>(null);
-  const [evolucao, setEvolucao] = useState<EvolucaoDia[]>([]);
+  const [regioes, setRegioes] = useState<Regiao[]>([]);
   const [topProdutos, setTopProdutos] = useState<TopProduto[]>([]);
   const [horarios, setHorarios] = useState<HorarioPico[]>([]);
-  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [heatmap, setHeatmap] = useState<HeatmapData | null>(null);
 
-  // UI state
+  // UI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -125,485 +241,655 @@ const RelatoriosPage = () => {
     navigate("/");
   };
 
-  // Build query params based on current filters
   const buildParams = useCallback((): Record<string, string> => {
-    const params: Record<string, string> = { restaurante_id: restaurante };
+    const p: Record<string, string> = { restaurante_id: restaurante };
     if (periodo === "custom" && dateRange?.from && dateRange?.to) {
-      params.data_inicio = format(dateRange.from, "yyyy-MM-dd");
-      params.data_fim = format(dateRange.to, "yyyy-MM-dd");
+      p.data_inicio = format(dateRange.from, "yyyy-MM-dd");
+      p.data_fim = format(dateRange.to, "yyyy-MM-dd");
     } else {
-      params.periodo = periodo === "custom" ? "30" : periodo;
+      p.periodo = periodo === "custom" ? "30" : periodo;
     }
-    return params;
+    return p;
   }, [restaurante, periodo, dateRange]);
 
-  // Load restaurants list
+  // Load restaurant list once
   useEffect(() => {
-    dashboardFetch("/dashboard/restaurantes", {})
-      .then((data: RestauranteOpcao[]) => {
-        setRestaurantes([{ id: "all", nome: "Todos os Restaurantes" }, ...data]);
-      })
-      .catch(() => {
-        setRestaurantes([{ id: "all", nome: "Todos os Restaurantes" }]);
-      });
+    dashFetch("/dashboard/restaurantes", {})
+      .then((d: RestauranteOpcao[]) =>
+        setRestaurantes([{ id: "all", nome: "Todos os Restaurantes" }, ...d])
+      )
+      .catch(() => setRestaurantes([{ id: "all", nome: "Todos os Restaurantes" }]));
   }, []);
 
-  // Load all dashboard data
-  const fetchDashboard = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     const params = buildParams();
-
     try {
-      const [kpisData, evolucaoData, produtosData, horariosData, transacoesData] =
-        await Promise.all([
-          dashboardFetch("/dashboard/kpis", params),
-          dashboardFetch("/dashboard/evolucao", params),
-          dashboardFetch("/dashboard/top-produtos", params),
-          dashboardFetch("/dashboard/horarios", params),
-          dashboardFetch("/dashboard/ultimas-transacoes", params),
-        ]);
-
-      setKpis(kpisData);
-      setEvolucao(evolucaoData);
-      setTopProdutos(produtosData);
-      setHorarios(horariosData);
-      setTransacoes(transacoesData);
+      const [kpisD, regD, prodD, horD, heatD] = await Promise.all([
+        dashFetch("/dashboard/kpis", params),
+        dashFetch("/dashboard/regioes", params),
+        dashFetch("/dashboard/top-produtos", params),
+        dashFetch("/dashboard/horarios", params),
+        dashFetch("/dashboard/heatmap", params),
+      ]);
+      setKpis(kpisD);
+      setRegioes(regD);
+      setTopProdutos(prodD);
+      setHorarios(horD);
+      setHeatmap(heatD);
       setLastUpdate(new Date());
-    } catch (e: any) {
+    } catch {
       setError("Não foi possível carregar os dados. Verifique a conexão com o servidor.");
     } finally {
       setLoading(false);
     }
   }, [buildParams]);
 
-  // Re-fetch when filters change (skip custom period until both dates selected)
   useEffect(() => {
-    if (periodo === "custom") {
-      if (dateRange?.from && dateRange?.to) fetchDashboard();
-      return;
-    }
-    fetchDashboard();
-  }, [restaurante, periodo, dateRange, fetchDashboard]);
+    if (periodo === "custom" && !(dateRange?.from && dateRange?.to)) return;
+    fetchAll();
+  }, [restaurante, periodo, dateRange, fetchAll]);
+
+  // ── Computed ────────────────────────────────────────────────────────────────
+
+  const filteredRegioes = regioes.filter(
+    (r) =>
+      r.bairro.toLowerCase().includes(searchRegiao.toLowerCase()) ||
+      r.cidade.toLowerCase().includes(searchRegiao.toLowerCase())
+  );
+
+  const maxReceita = Math.max(...regioes.map((r) => r.receita), 1);
+
+  const totalUnidades = topProdutos.reduce((s, p) => s + p.qtd, 0);
+  const totalReceita = topProdutos.reduce((s, p) => s + p.receita, 0);
+  const ticketItem = totalUnidades > 0 ? totalReceita / totalUnidades : 0;
+  const maxQtd = Math.max(...topProdutos.map((p) => p.qtd), 1);
+
+  const picoHora = horarios.reduce(
+    (best, h) => (h.pedidos > best.pedidos ? h : best),
+    { hora: "—", pedidos: 0 }
+  );
+  const lentoHora = horarios.reduce(
+    (worst, h) => (h.pedidos > 0 && h.pedidos < worst.pedidos ? h : worst),
+    { hora: "—", pedidos: Infinity }
+  );
+
+  // ── Tab definitions ──────────────────────────────────────────────────────────
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: "regioes", label: "Vendas por Região" },
+    { id: "mais-vendidos", label: "Mais Vendidos" },
+    { id: "horarios", label: "Horário de Pico" },
+  ];
 
   const periodoLabel =
     periodo === "custom" && dateRange?.from
-      ? `${format(dateRange.from, "dd/MM", { locale: ptBR })}${
-          dateRange.to ? ` – ${format(dateRange.to, "dd/MM", { locale: ptBR })}` : ""
-        }`
-      : PERIODOS.find((p) => p.id === periodo)?.label;
+      ? `${format(dateRange.from, "dd/MM", { locale: ptBR })}${dateRange.to ? ` – ${format(dateRange.to, "dd/MM", { locale: ptBR })}` : ""}`
+      : PERIODOS.find((p) => p.id === periodo)?.label ?? "";
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 w-full bg-card/80 backdrop-blur-xl border-b border-border">
-        <div className="container flex items-center justify-between h-16">
-          <Link to="/restaurante-home" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-extrabold text-lg">Z</span>
-            </div>
-            <span className="font-extrabold text-xl text-foreground tracking-tight">Zupps</span>
-          </Link>
+    <div className="min-h-screen bg-[#fafaf9] font-sans">
 
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-50 w-full bg-white border-b border-border shadow-sm">
+        <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between h-14">
+          {/* Left: Logo + Nav */}
+          <div className="flex items-center gap-8">
+            <Link to="/restaurante-home" className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-extrabold text-base">Z</span>
+              </div>
+              <div>
+                <div className="font-extrabold text-sm text-foreground leading-none">Zupps Eats</div>
+                <div className="text-[10px] text-muted-foreground">Painel do Parceiro</div>
+              </div>
+            </Link>
+
+            <nav className="hidden md:flex items-center gap-1">
+              <Link to="/restaurante-home" className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                Início
+              </Link>
+              <span className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer">
+                Pedidos
+              </span>
+              <Link to="/gerencia-cardapio" className="px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                Cardápio
+              </Link>
+              <span className="px-3 py-1.5 rounded-lg text-sm font-semibold text-foreground bg-muted">
+                Relatórios
+              </span>
+            </nav>
+          </div>
+
+          {/* Right: restaurant + refresh + logout */}
           <div className="flex items-center gap-3">
             {lastUpdate && !loading && (
-              <span className="hidden sm:inline text-[11px] text-muted-foreground">
-                Atualizado às {format(lastUpdate, "HH:mm")}
+              <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+                Atualizado há {Math.round((Date.now() - lastUpdate.getTime()) / 60000)} min
               </span>
             )}
             <button
-              onClick={fetchDashboard}
+              onClick={fetchAll}
               disabled={loading}
-              className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-40"
-              title="Atualizar dados"
+              className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
             >
-              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             </button>
+
+            {restaurant && (
+              <div className="hidden sm:flex items-center gap-2 text-right">
+                <div>
+                  <div className="text-xs font-bold text-foreground leading-none">{restaurant.nome_fantasia || restaurant.nome}</div>
+                  <div className="text-[10px] text-muted-foreground">{restaurant.cidade || ""}</div>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                  {(restaurant.nome_fantasia || restaurant.nome || "?").charAt(0).toUpperCase()}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Sair"
             >
-              <LogOut size={16} />
-              <span className="hidden sm:inline">Sair</span>
+              <LogOut size={14} />
             </button>
+          </div>
+        </div>
+
+        {/* ── Tab bar ── */}
+        <div className="max-w-[1280px] mx-auto px-6 border-t border-border">
+          <div className="flex items-center gap-0">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-5 py-3 text-sm font-semibold transition-colors ${
+                  activeTab === tab.id
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="tab-indicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                  />
+                )}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
-      <div className="container py-6 max-w-6xl space-y-6">
-        {/* ── Title ── */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-            <BarChart3 size={14} className="text-primary" />
-            Relatórios
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">Painel de Análises</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Acompanhe a performance do seu negócio em tempo real.
-          </p>
-        </motion.div>
-
-        {/* ── Filters ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="p-4 rounded-2xl bg-card border border-border shadow-card flex flex-col sm:flex-row gap-3 sm:items-center"
-        >
-          {/* Restaurant filter */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Store size={16} className="text-primary flex-shrink-0" />
-            <Select value={restaurante} onValueChange={setRestaurante}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {restaurantes.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Period filter */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <CalendarIcon size={16} className="text-primary flex-shrink-0" />
-            <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PERIODOS.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {periodo === "custom" && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="rounded-xl gap-2 flex-shrink-0">
-                    <CalendarIcon size={14} />
-                    <span className="text-xs">{periodoLabel || "Selecionar"}</span>
-                    <ChevronDown size={14} />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ── Error state ── */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium"
-            >
-              <AlertCircle size={16} />
+      {/* ── Error banner ── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="max-w-[1280px] mx-auto px-6 pt-4"
+          >
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              <AlertCircle size={15} />
               {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* ══════════════ FINANCEIRO & VENDAS ══════════════ */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-extrabold text-foreground">Financeiro &amp; Vendas</h2>
-            <span className="text-[11px] text-muted-foreground">{periodoLabel}</span>
-          </div>
-
-          {/* KPI cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              {
-                icon: ShoppingBag,
-                label: "Pedidos Totais",
-                value: loading ? null : kpis?.total_pedidos.toLocaleString("pt-BR") ?? "—",
-                color: "text-primary",
-              },
-              {
-                icon: DollarSign,
-                label: "Receita Bruta",
-                value: loading ? null : kpis ? `R$ ${kpis.receita_bruta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—",
-                color: "text-accent",
-              },
-              {
-                icon: Receipt,
-                label: "Ticket Médio",
-                value: loading ? null : kpis ? `R$ ${kpis.ticket_medio.toFixed(2).replace(".", ",")}` : "—",
-                color: "text-secondary",
-              },
-              {
-                icon: XCircle,
-                label: "Taxa de Cancelamento",
-                value: loading ? null : kpis ? `${kpis.taxa_cancelamento.toFixed(1)}%` : "—",
-                color: "text-destructive",
-              },
-            ].map((kpi) => (
-              <div key={kpi.label} className="p-5 rounded-2xl bg-card border border-border shadow-card">
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                    {kpi.label}
-                  </span>
-                  <kpi.icon size={18} className={kpi.color} />
+      {/* ══════════════════════════════════════════════════════════
+          TAB 1 — VENDAS POR REGIÃO
+      ══════════════════════════════════════════════════════════ */}
+      <AnimatePresence mode="wait">
+        {activeTab === "regioes" && (
+          <motion.div
+            key="regioes"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="max-w-[1280px] mx-auto px-6 py-8 space-y-6"
+          >
+            {/* Title row */}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Relatórios</div>
+                <h1 className="text-3xl font-extrabold text-foreground">Vendas por Região</h1>
+                <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+                  Visualize e filtre dados de vendas segmentados por bairro para apoiar decisões de expansão.
+                </p>
+              </div>
+              {lastUpdate && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 mt-1">
+                  <CalendarIcon size={12} />
+                  Última atualização: {format(lastUpdate, "dd/MM/yyyy · HH:mm")}
                 </div>
-                {kpi.value === null ? (
-                  <Skeleton className="h-7 w-24 mt-1" />
+              )}
+            </div>
+
+            {/* Filter bar */}
+            <div className="bg-white border border-border rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                <Filter size={13} />
+                Filtros
+              </div>
+              <PeriodBar periodo={periodo} setPeriodo={setPeriodo} dateRange={dateRange} setDateRange={setDateRange}>
+                <Select value={restaurante} onValueChange={setRestaurante}>
+                  <SelectTrigger className="h-8 rounded-full text-sm w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {restaurantes.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </PeriodBar>
+
+              <div className="sm:ml-auto flex items-center gap-2 bg-muted rounded-xl px-3 py-2">
+                <Search size={14} className="text-muted-foreground" />
+                <input
+                  value={searchRegiao}
+                  onChange={(e) => setSearchRegiao(e.target.value)}
+                  placeholder="Buscar região..."
+                  className="bg-transparent text-sm outline-none w-36 placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+
+            {/* KPI cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <KpiCard label="Pedidos Totais" value={loading ? null : fmt(kpis?.total_pedidos ?? 0)} icon={ShoppingBag} sub={periodoLabel} />
+              <KpiCard label="Receita Bruta" value={loading ? null : fmtR(kpis?.receita_bruta ?? 0)} icon={DollarSign} iconBg="bg-accent/10" iconColor="text-accent" sub={periodoLabel} />
+              <KpiCard label="Ticket Médio" value={loading ? null : fmtR(kpis?.ticket_medio ?? 0)} icon={Receipt} iconBg="bg-secondary/10" iconColor="text-secondary" />
+              <KpiCard label="Taxa de Cancelamento" value={loading ? null : `${(kpis?.taxa_cancelamento ?? 0).toFixed(1)}%`} icon={XCircle} iconBg="bg-destructive/10" iconColor="text-destructive" />
+            </div>
+
+            {/* Chart + Highlights */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Bar chart */}
+              <div className="lg:col-span-2 bg-white border border-border rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Top 10 regiões por receita</h3>
+                    <p className="text-[11px] text-muted-foreground">{periodoLabel} · Nível: bairro</p>
+                  </div>
+                </div>
+                {loading ? (
+                  <Skeleton className="h-64 mt-4" />
+                ) : filteredRegioes.length === 0 ? (
+                  <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+                    Nenhuma região encontrada
+                  </div>
                 ) : (
-                  <div className="text-2xl font-extrabold text-foreground">{kpi.value}</div>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={filteredRegioes} margin={{ left: -10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="bairro" stroke="hsl(var(--muted-foreground))" fontSize={10} tick={{ dy: 6 }} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `R$${Math.round(v / 1000)}k`} />
+                      <Tooltip
+                        contentStyle={{ background: "#fff", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                        formatter={(v: number) => [fmtR(v), "Receita"]}
+                      />
+                      <Bar dataKey="receita" radius={[4, 4, 0, 0]}>
+                        {filteredRegioes.map((_, i) => (
+                          <Cell key={i} fill={i === 0 ? "hsl(var(--primary))" : "hsl(var(--foreground))"} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 )}
               </div>
-            ))}
-          </div>
 
-          {/* Revenue evolution chart */}
-          <div className="p-5 rounded-2xl bg-card border border-border shadow-card">
-            <h3 className="text-sm font-bold text-foreground mb-1">Evolução do Faturamento</h3>
-            <p className="text-[11px] text-muted-foreground mb-4">Receita diária no período selecionado</p>
-            {loading ? (
-              <Skeleton className="h-60 w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={evolucao}>
-                  <defs>
-                    <linearGradient id="grad-fat" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="dia" stroke="hsl(var(--muted-foreground))" fontSize={11} interval="preserveStartEnd" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `R$${v}`} />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12 }}
-                    formatter={(v: number) => [`R$ ${v.toFixed(2).replace(".", ",")}`, "Faturamento"]}
-                  />
-                  <Area type="monotone" dataKey="valor" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#grad-fat)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          {/* Last transactions */}
-          <div className="p-5 rounded-2xl bg-card border border-border shadow-card">
-            <h3 className="text-sm font-bold text-foreground mb-4">Últimas Transações</h3>
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+              {/* Top regiões list */}
+              <div className="bg-white border border-border rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-foreground mb-1">Destaques de volume</h3>
+                <p className="text-[11px] text-muted-foreground mb-4">Regiões com maior concentração de pedidos</p>
+                {loading ? (
+                  <div className="space-y-3">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+                ) : filteredRegioes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sem dados</p>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredRegioes.slice(0, 5).map((r, i) => {
+                      const pct = Math.round((r.receita / maxReceita) * 100);
+                      return (
+                        <div key={r.bairro} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
+                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <MapPin size={13} className="text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold text-foreground truncate">{r.bairro}</div>
+                            <div className="text-[10px] text-muted-foreground">{r.cidade}</div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[11px] font-bold">
+                            <ArrowUpRight size={10} />
+                            {pct}%
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ) : transacoes.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma transação no período</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-[11px] font-bold uppercase text-muted-foreground border-b border-border">
-                      <th className="py-2">ID</th>
-                      <th className="py-2">Data/Hora</th>
-                      <th className="py-2">Método</th>
-                      <th className="py-2 text-right">Valor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transacoes.map((t) => (
-                      <tr key={t.id} className="border-b border-border/50 last:border-0">
-                        <td className="py-3 font-mono text-xs text-foreground">{t.id}</td>
-                        <td className="py-3 text-muted-foreground text-xs">{t.data}</td>
-                        <td className="py-3">
-                          <span className="px-2 py-0.5 rounded-full bg-muted text-[11px] font-semibold text-foreground">
-                            {t.metodo}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right font-bold text-foreground">
-                          R$ {t.valor.toFixed(2).replace(".", ",")}
-                        </td>
+            </div>
+
+            {/* Regions table */}
+            {!loading && filteredRegioes.length > 0 && (
+              <div className="bg-white border border-border rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-foreground mb-4">Todas as regiões</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                        <th className="pb-3">#</th>
+                        <th className="pb-3">Bairro</th>
+                        <th className="pb-3">Cidade</th>
+                        <th className="pb-3 text-right">Pedidos</th>
+                        <th className="pb-3 text-right">Receita</th>
+                        <th className="pb-3">Participação</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filteredRegioes.map((r, i) => (
+                        <tr key={r.bairro} className="border-b border-border/40 last:border-0">
+                          <td className="py-3 font-bold text-primary">{String(i + 1).padStart(2, "0")}</td>
+                          <td className="py-3 font-semibold text-foreground">{r.bairro}</td>
+                          <td className="py-3 text-muted-foreground text-xs">{r.cidade}</td>
+                          <td className="py-3 text-right">{fmt(r.pedidos)}</td>
+                          <td className="py-3 text-right font-bold">{fmtR(r.receita)}</td>
+                          <td className="py-3 w-32">
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-primary rounded-full" style={{ width: `${(r.receita / maxReceita) * 100}%` }} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
-        </section>
+          </motion.div>
+        )}
 
-        {/* ══════════════ PRODUTOS & PERFORMANCE ══════════════ */}
-        <section className="space-y-4 pt-2 border-t border-border">
-          <h2 className="text-lg font-extrabold text-foreground pt-4">Produtos &amp; Performance</h2>
+        {/* ══════════════════════════════════════════════════════════
+            TAB 2 — MAIS VENDIDOS
+        ══════════════════════════════════════════════════════════ */}
+        {activeTab === "mais-vendidos" && (
+          <motion.div
+            key="mais-vendidos"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="max-w-[1280px] mx-auto px-6 py-8 space-y-6"
+          >
+            {/* Title */}
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">Relatórios · BI</span>
+                {lastUpdate && <span className="text-[11px] text-muted-foreground">Atualizado há {Math.round((Date.now() - lastUpdate.getTime()) / 60000)} min</span>}
+              </div>
+              <h1 className="text-3xl font-extrabold text-foreground">Itens &amp; "Extras" Mais Vendidos</h1>
+              <p className="text-sm text-muted-foreground mt-1">{periodoLabel} · Todas as categorias</p>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Top produtos bar chart */}
-            <div className="p-5 rounded-2xl bg-card border border-border shadow-card">
-              <h3 className="text-sm font-bold text-foreground mb-1">Top 8 Itens Mais Vendidos</h3>
-              <p className="text-[11px] text-muted-foreground mb-4">Volume por produto</p>
+            {/* Filter bar */}
+            <div className="bg-white border border-border rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <PeriodBar periodo={periodo} setPeriodo={setPeriodo} dateRange={dateRange} setDateRange={setDateRange}>
+                <Select value={restaurante} onValueChange={setRestaurante}>
+                  <SelectTrigger className="h-8 rounded-full text-sm w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {restaurantes.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </PeriodBar>
+            </div>
+
+            {/* KPI cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <KpiCard label="Unidades Vendidas" value={loading ? null : fmt(totalUnidades)} sub="Apenas pedidos concluídos" icon={Package} />
+              <KpiCard label="Receita Total" value={loading ? null : fmtR(totalReceita)} sub="Soma dos itens do ranking" icon={DollarSign} iconBg="bg-accent/10" iconColor="text-accent" />
+              <KpiCard label="Itens no Ranking" value={loading ? null : String(topProdutos.length)} sub="Top produtos do período" icon={BarChart3} iconBg="bg-secondary/10" iconColor="text-secondary" />
+              <KpiCard label="Ticket Médio (Item)" value={loading ? null : fmtR(ticketItem)} sub="Receita / unidade" icon={Receipt} />
+            </div>
+
+            {/* Bar chart */}
+            <div className="bg-white border border-border rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Volume de vendas por item</h3>
+                  <p className="text-[11px] text-muted-foreground">Top 8 itens · passe o mouse para detalhes</p>
+                </div>
+              </div>
               {loading ? (
-                <Skeleton className="h-72 w-full" />
+                <Skeleton className="h-64 mt-4" />
               ) : topProdutos.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Sem dados no período</p>
+                <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Sem dados no período</div>
               ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={topProdutos} layout="vertical" margin={{ left: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                    <YAxis type="category" dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={10} width={120} />
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={topProdutos} margin={{ left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={10} tick={{ dy: 6 }} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12 }}
-                      formatter={(v: number) => [v, "Qtd. vendida"]}
+                      contentStyle={{ background: "#fff", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
+                      formatter={(v: number) => [fmt(v), "Unidades"]}
                     />
-                    <Bar dataKey="qtd" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="qtd" radius={[4, 4, 0, 0]}>
+                      {topProdutos.map((_, i) => (
+                        <Cell key={i} fill={i === 0 ? "hsl(var(--primary))" : `hsl(var(--primary) / ${1 - i * 0.1})`} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
 
-            {/* Faturamento por produto (pie) */}
-            <div className="p-5 rounded-2xl bg-card border border-border shadow-card">
-              <h3 className="text-sm font-bold text-foreground mb-1">Faturamento por Produto</h3>
-              <p className="text-[11px] text-muted-foreground mb-4">Participação dos top 8 itens</p>
+            {/* Table */}
+            <div className="bg-white border border-border rounded-2xl p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-foreground mb-1">Top {topProdutos.length} — Itens Mais Vendidos</h3>
+              <p className="text-[11px] text-muted-foreground mb-4">Ordenado por quantidade · pedidos concluídos</p>
               {loading ? (
-                <Skeleton className="h-72 w-full" />
+                <div className="space-y-4">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
               ) : topProdutos.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">Sem dados no período</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">Sem dados no período</p>
               ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <PieChart>
-                    <Pie
-                      data={topProdutos}
-                      dataKey="receita"
-                      nameKey="nome"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={110}
-                      paddingAngle={3}
-                    >
-                      {topProdutos.map((_, i) => (
-                        <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                        <th className="pb-3 w-10">#</th>
+                        <th className="pb-3">Item</th>
+                        <th className="pb-3 text-right">Quantidade</th>
+                        <th className="pb-3 text-right">Receita</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topProdutos.map((p, i) => (
+                        <tr key={p.nome} className="border-b border-border/40 last:border-0">
+                          <td className="py-4">
+                            <span className={`font-extrabold text-sm ${i === 0 ? "text-primary" : "text-muted-foreground"}`}>
+                              {i === 0 ? "👑" : ""} {String(i + 1).padStart(2, "0")}
+                            </span>
+                          </td>
+                          <td className="py-4">
+                            <div className="font-semibold text-foreground text-sm">{p.nome}</div>
+                            <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden w-40">
+                              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(p.qtd / maxQtd) * 100}%` }} />
+                            </div>
+                          </td>
+                          <td className="py-4 text-right font-bold text-foreground">{fmt(p.qtd)}</td>
+                          <td className="py-4 text-right font-bold text-foreground">{fmtR(p.receita)}</td>
+                        </tr>
                       ))}
-                    </Pie>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            TAB 3 — HORÁRIO DE PICO
+        ══════════════════════════════════════════════════════════ */}
+        {activeTab === "horarios" && (
+          <motion.div
+            key="horarios"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="max-w-[1280px] mx-auto px-6 py-8 space-y-6"
+          >
+            {/* Title */}
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Relatórios / Operação</div>
+                <h1 className="text-3xl font-extrabold text-foreground">Horários de Pico</h1>
+                <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+                  Analise os horários com maior volume de pedidos. Use os filtros para refinar a análise.
+                </p>
+              </div>
+              {kpis && !loading && (
+                <div className="shrink-0 text-xs text-muted-foreground mt-1">
+                  Exibindo {fmt(kpis.total_pedidos)} pedidos concluídos
+                </div>
+              )}
+            </div>
+
+            {/* Filter bar */}
+            <div className="bg-white border border-border rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-2">
+                <CalendarIcon size={14} className="text-muted-foreground" />
+                <span className="text-sm font-medium text-muted-foreground">Período</span>
+              </div>
+              <PeriodBar periodo={periodo} setPeriodo={setPeriodo} dateRange={dateRange} setDateRange={setDateRange}>
+                <Select value={restaurante} onValueChange={setRestaurante}>
+                  <SelectTrigger className="h-8 rounded-full text-sm w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {restaurantes.map((r) => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </PeriodBar>
+            </div>
+
+            {/* KPI cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <KpiCard
+                label="Pedidos Concluídos"
+                value={loading ? null : fmt(kpis?.total_pedidos ?? 0)}
+                sub={`${periodoLabel}`}
+                icon={TrendingUp}
+              />
+              <KpiCard
+                label="Receita no Período"
+                value={loading ? null : fmtR(kpis?.receita_bruta ?? 0)}
+                sub="Total acumulado"
+                icon={DollarSign}
+                iconBg="bg-accent/10"
+                iconColor="text-accent"
+              />
+              <KpiCard
+                label="Horário de Pico"
+                value={loading ? null : picoHora.hora}
+                sub={`${fmt(picoHora.pedidos)} pedidos no bloco`}
+                icon={Flame}
+                iconBg="bg-orange-100"
+                iconColor="text-orange-500"
+              />
+              <KpiCard
+                label="Horário Mais Lento"
+                value={loading ? null : (lentoHora.pedidos === Infinity ? "—" : lentoHora.hora)}
+                sub={lentoHora.pedidos === Infinity ? "Sem dados" : `${fmt(lentoHora.pedidos)} pedidos`}
+                icon={Clock}
+                iconBg="bg-muted"
+                iconColor="text-muted-foreground"
+              />
+            </div>
+
+            {/* ComposedChart: bars for orders */}
+            <div className="bg-white border border-border rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp size={14} className="text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Volume de pedidos por hora</h3>
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-4">Sobreposição por faixa horária — barras: pedidos</p>
+              {loading ? (
+                <Skeleton className="h-64" />
+              ) : horarios.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Sem dados no período</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart data={horarios} margin={{ left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="hora" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={11} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12 }}
-                      formatter={(v: number) => [`R$ ${v.toFixed(2).replace(".", ",")}`, "Receita"]}
+                      contentStyle={{ background: "#fff", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
                     />
-                  </PieChart>
+                    <Bar yAxisId="left" dataKey="pedidos" name="Pedidos" radius={[4, 4, 0, 0]}>
+                      {horarios.map((h, i) => (
+                        <Cell key={i} fill={h.pedidos >= picoHora.pedidos * 0.7 ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.35)"} />
+                      ))}
+                    </Bar>
+                  </ComposedChart>
                 </ResponsiveContainer>
               )}
             </div>
-          </div>
 
-          {/* Top produtos table */}
-          <div className="p-5 rounded-2xl bg-card border border-border shadow-card">
-            <h3 className="text-sm font-bold text-foreground mb-4">Performance dos Top Produtos</h3>
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            {/* Heatmap + Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 bg-white border border-border rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Flame size={14} className="text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Mapa de calor — dia da semana × hora</h3>
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-5">Volume de pedidos consolidado por bloco horário</p>
+                {loading ? <Skeleton className="h-48" /> : <Heatmap data={heatmap} />}
               </div>
-            ) : topProdutos.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Sem dados no período</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-[11px] font-bold uppercase text-muted-foreground border-b border-border">
-                      <th className="py-2">#</th>
-                      <th className="py-2">Produto</th>
-                      <th className="py-2 text-right">Qtd. Vendida</th>
-                      <th className="py-2 text-right">Faturamento</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topProdutos.map((p, i) => (
-                      <tr key={p.nome} className="border-b border-border/50 last:border-0">
-                        <td className="py-3 font-extrabold text-primary">
-                          {String(i + 1).padStart(2, "0")}
-                        </td>
-                        <td className="py-3 font-semibold text-foreground">{p.nome}</td>
-                        <td className="py-3 text-right text-foreground">
-                          {p.qtd.toLocaleString("pt-BR")}
-                        </td>
-                        <td className="py-3 text-right font-bold text-foreground">
-                          R$ {p.receita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
 
-          {/* Peak hours chart */}
-          <div className="p-5 rounded-2xl bg-card border border-border shadow-card">
-            <h3 className="text-sm font-bold text-foreground mb-1">Horário de Pico</h3>
-            <p className="text-[11px] text-muted-foreground mb-4">Volume de pedidos por hora</p>
-            {loading ? (
-              <Skeleton className="h-60 w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={horarios}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="hora" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12 }}
-                    formatter={(v: number) => [v, "Pedidos"]}
-                  />
-                  <Bar dataKey="pedidos" radius={[6, 6, 0, 0]}>
-                    {horarios.map((h, i) => (
-                      <Cell
-                        key={i}
-                        fill={
-                          h.pedidos >= Math.max(...horarios.map((x) => x.pedidos)) * 0.7
-                            ? "hsl(var(--primary))"
-                            : "hsl(var(--primary) / 0.4)"
-                        }
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </section>
-
-        {/* ══════════════ OPERAÇÃO ══════════════ */}
-        <section className="space-y-4 pt-2 border-t border-border">
-          <h2 className="text-lg font-extrabold text-foreground pt-4">Operação</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { icon: Clock, label: "Pedidos no Período", value: loading ? null : kpis?.total_pedidos.toLocaleString("pt-BR") ?? "—", color: "text-primary" },
-              { icon: Truck, label: "Receita Bruta", value: loading ? null : kpis ? `R$ ${kpis.receita_bruta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—", color: "text-accent" },
-              { icon: XCircle, label: "Taxa de Cancelamento", value: loading ? null : kpis ? `${kpis.taxa_cancelamento.toFixed(1)}%` : "—", color: "text-destructive" },
-            ].map((m) => (
-              <div key={m.label} className="p-5 rounded-2xl bg-card border border-border shadow-card">
-                <m.icon size={18} className={`${m.color} mb-2`} />
-                {m.value === null ? (
-                  <Skeleton className="h-7 w-20 mb-1" />
+              <div className="bg-white border border-border rounded-2xl p-6 shadow-sm">
+                <h3 className="text-sm font-bold text-foreground mb-1">Tabela consolidada</h3>
+                <p className="text-[11px] text-muted-foreground mb-4">Métricas por faixa horária (00:00–23:00)</p>
+                {loading ? (
+                  <div className="space-y-2">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
                 ) : (
-                  <div className="text-xl font-extrabold text-foreground">{m.value}</div>
+                  <div className="overflow-y-auto max-h-80">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white">
+                        <tr className="text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                          <th className="pb-2">Horário</th>
+                          <th className="pb-2 text-right">Pedidos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(heatmap?.tabela ?? []).map((row, i) => (
+                          <tr key={i} className="border-b border-border/30 last:border-0">
+                            <td className="py-2 font-mono text-xs text-foreground">{row.horario}</td>
+                            <td className={`py-2 text-right font-bold text-xs ${row.pedidos > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                              {row.pedidos}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-                <div className="text-[11px] text-muted-foreground mt-1">{m.label}</div>
               </div>
-            ))}
-          </div>
-        </section>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
