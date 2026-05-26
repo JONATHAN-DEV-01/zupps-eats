@@ -44,6 +44,9 @@ const dashFetch = async (endpoint: string, params: Record<string, string>) => {
   const res = await fetch(`${API_BASE_URL}${endpoint}?${qs}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) {
+    throw new Error("UNAUTHORIZED");
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 };
@@ -279,8 +282,12 @@ const RelatoriosPage = () => {
       setHorarios(horD);
       setHeatmap(heatD);
       setLastUpdate(new Date());
-    } catch {
-      setError("Não foi possível carregar os dados. Verifique a conexão com o servidor.");
+    } catch (err: any) {
+      if (err.message === "UNAUTHORIZED") {
+        handleLogout();
+      } else {
+        setError("Não foi possível carregar os dados. Verifique a conexão com o servidor.");
+      }
     } finally {
       setLoading(false);
     }
