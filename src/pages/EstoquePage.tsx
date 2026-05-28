@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, Search, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Package, Search, ShieldAlert, Minus, Plus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -10,18 +10,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { getUserProfile } from "@/lib/api";
 
-type Produto = { id: string; nome: string; preco: number; status_disponivel: boolean };
+type Produto = { id: string; nome: string; preco: number; quantidade: number; status_disponivel: boolean };
 type Adicional = { id: string; nome: string; preco: number; grupo_id: string; grupo_nome: string; status_disponivel: boolean };
 
 const PRODUTOS_MOCK: Produto[] = [
-  { id: "p1", nome: "Burguer Master", preco: 32.9, status_disponivel: true },
-  { id: "p2", nome: "Cheese Bacon", preco: 28.5, status_disponivel: true },
-  { id: "p3", nome: "Veggie Burger", preco: 26.0, status_disponivel: false },
-  { id: "p4", nome: "Batata Frita G", preco: 18.9, status_disponivel: true },
-  { id: "p5", nome: "Onion Rings", preco: 16.5, status_disponivel: true },
-  { id: "p6", nome: "Milk Shake Chocolate", preco: 14.9, status_disponivel: false },
-  { id: "p7", nome: "Refrigerante Lata", preco: 6.0, status_disponivel: true },
-  { id: "p8", nome: "Combo Família", preco: 89.9, status_disponivel: true },
+  { id: "p1", nome: "Burguer Master", preco: 32.9, quantidade: 24, status_disponivel: true },
+  { id: "p2", nome: "Cheese Bacon", preco: 28.5, quantidade: 12, status_disponivel: true },
+  { id: "p3", nome: "Veggie Burger", preco: 26.0, quantidade: 0, status_disponivel: false },
+  { id: "p4", nome: "Batata Frita G", preco: 18.9, quantidade: 40, status_disponivel: true },
+  { id: "p5", nome: "Onion Rings", preco: 16.5, quantidade: 9, status_disponivel: true },
+  { id: "p6", nome: "Milk Shake Chocolate", preco: 14.9, quantidade: 0, status_disponivel: false },
+  { id: "p7", nome: "Refrigerante Lata", preco: 6.0, quantidade: 60, status_disponivel: true },
+  { id: "p8", nome: "Combo Família", preco: 89.9, quantidade: 5, status_disponivel: true },
 ];
 
 const ADICIONAIS_MOCK: Adicional[] = [
@@ -57,11 +57,27 @@ const EstoquePage = () => {
   }, []);
 
   const toggleProduto = (id: string, value: boolean) => {
-    setProdutos((prev) => prev.map((p) => (p.id === id ? { ...p, status_disponivel: value } : p)));
+    setProdutos((prev) => prev.map((p) => (p.id === id ? { ...p, status_disponivel: value, quantidade: value && p.quantidade === 0 ? 1 : p.quantidade } : p)));
     toast({
       title: value ? "Produto disponível" : "Produto pausado",
       description: `Alteração salva com sucesso.`,
     });
+  };
+
+  // Optimistic update da quantidade — dispara persistência em background.
+  const updateQuantidade = (id: string, delta: number) => {
+    setProdutos((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        const novaQtd = Math.max(0, p.quantidade + delta);
+        return {
+          ...p,
+          quantidade: novaQtd,
+          status_disponivel: novaQtd > 0,
+        };
+      }),
+    );
+    // Persistência em background (ex.: supabase.from('produto').update({ quantidade }).eq('id', id))
   };
 
   const toggleAdicional = (id: string, value: boolean) => {
@@ -158,15 +174,16 @@ const EstoquePage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produto</TableHead>
-                    <TableHead className="w-[140px]">Preço</TableHead>
-                    <TableHead className="w-[140px]">Status</TableHead>
-                    <TableHead className="w-[120px] text-right">Disponível</TableHead>
+                    <TableHead className="w-[120px]">Preço</TableHead>
+                    <TableHead className="w-[170px]">Qtd. Disponível</TableHead>
+                    <TableHead className="w-[130px]">Status</TableHead>
+                    <TableHead className="w-[110px] text-right">Disponível</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {produtosFiltrados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-sm text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-10 text-sm text-muted-foreground">
                         Nenhum produto encontrado.
                       </TableCell>
                     </TableRow>
@@ -178,6 +195,30 @@ const EstoquePage = () => {
                       >
                         <TableCell className="font-semibold text-foreground">{p.nome}</TableCell>
                         <TableCell className="text-sm text-foreground">{formatBRL(p.preco)}</TableCell>
+                        <TableCell>
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantidade(p.id, -1)}
+                              disabled={p.quantidade <= 0}
+                              aria-label="Diminuir quantidade"
+                              className="w-8 h-8 rounded-md border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="min-w-[2.5rem] text-center text-sm font-semibold text-foreground tabular-nums">
+                              {p.quantidade}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantidade(p.id, 1)}
+                              aria-label="Aumentar quantidade"
+                              className="w-8 h-8 rounded-md border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {p.status_disponivel ? (
                             <Badge variant="secondary" className="bg-accent/15 text-accent border-0">
