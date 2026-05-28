@@ -23,7 +23,24 @@ const RestauranteHomePage = () => {
 
   useEffect(() => {
     const loadRestaurant = async () => {
-      if (!user) { navigate("/login-restaurante"); return; }
+      // Modo demo: sem usuário logado, exibe um restaurante fictício para visualização da tela.
+      if (!user) {
+        const demo = {
+          id: "demo",
+          nome_fantasia: "Burguer Master (Demo)",
+          razao_social: "Demo Restaurante LTDA",
+          endereco: "Rua das Flores, 123 - Centro",
+          telefone: "(11) 99999-0000",
+          email: "demo@burguermaster.com",
+          logotipo: null,
+          capa: null,
+          ativo: true,
+        };
+        setRestaurant(demo);
+        setActive(true);
+        setLoading(false);
+        return;
+      }
       try {
         // Garantimos que pega o ID correto dependendo de como o objeto user foi salvo
         const targetId = user.id || user.restaurante_id;
