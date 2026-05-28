@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight, User, BarChart3 } from "lucide-react";
+import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight, User, BarChart3, Package } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
