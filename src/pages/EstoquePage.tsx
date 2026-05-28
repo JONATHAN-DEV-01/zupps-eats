@@ -174,9 +174,10 @@ const EstoquePage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produto</TableHead>
-                    <TableHead className="w-[140px]">Preço</TableHead>
-                    <TableHead className="w-[140px]">Status</TableHead>
-                    <TableHead className="w-[120px] text-right">Disponível</TableHead>
+                    <TableHead className="w-[120px]">Preço</TableHead>
+                    <TableHead className="w-[170px]">Qtd. Disponível</TableHead>
+                    <TableHead className="w-[130px]">Status</TableHead>
+                    <TableHead className="w-[110px] text-right">Disponível</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
