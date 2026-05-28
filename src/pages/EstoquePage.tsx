@@ -10,18 +10,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { getUserProfile } from "@/lib/api";
 
-type Produto = { id: string; nome: string; preco: number; status_disponivel: boolean };
+type Produto = { id: string; nome: string; preco: number; quantidade: number; status_disponivel: boolean };
 type Adicional = { id: string; nome: string; preco: number; grupo_id: string; grupo_nome: string; status_disponivel: boolean };
 
 const PRODUTOS_MOCK: Produto[] = [
-  { id: "p1", nome: "Burguer Master", preco: 32.9, status_disponivel: true },
-  { id: "p2", nome: "Cheese Bacon", preco: 28.5, status_disponivel: true },
-  { id: "p3", nome: "Veggie Burger", preco: 26.0, status_disponivel: false },
-  { id: "p4", nome: "Batata Frita G", preco: 18.9, status_disponivel: true },
-  { id: "p5", nome: "Onion Rings", preco: 16.5, status_disponivel: true },
-  { id: "p6", nome: "Milk Shake Chocolate", preco: 14.9, status_disponivel: false },
-  { id: "p7", nome: "Refrigerante Lata", preco: 6.0, status_disponivel: true },
-  { id: "p8", nome: "Combo Família", preco: 89.9, status_disponivel: true },
+  { id: "p1", nome: "Burguer Master", preco: 32.9, quantidade: 24, status_disponivel: true },
+  { id: "p2", nome: "Cheese Bacon", preco: 28.5, quantidade: 12, status_disponivel: true },
+  { id: "p3", nome: "Veggie Burger", preco: 26.0, quantidade: 0, status_disponivel: false },
+  { id: "p4", nome: "Batata Frita G", preco: 18.9, quantidade: 40, status_disponivel: true },
+  { id: "p5", nome: "Onion Rings", preco: 16.5, quantidade: 9, status_disponivel: true },
+  { id: "p6", nome: "Milk Shake Chocolate", preco: 14.9, quantidade: 0, status_disponivel: false },
+  { id: "p7", nome: "Refrigerante Lata", preco: 6.0, quantidade: 60, status_disponivel: true },
+  { id: "p8", nome: "Combo Família", preco: 89.9, quantidade: 5, status_disponivel: true },
 ];
 
 const ADICIONAIS_MOCK: Adicional[] = [
