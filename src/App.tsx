@@ -34,6 +34,7 @@ import AcompanhamentoPedidoPage from "./pages/AcompanhamentoPedidoPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import RelatoriosPage from "./pages/RelatoriosPage";
+import EstoquePage from "./pages/EstoquePage";
 
 const queryClient = new QueryClient();
 
