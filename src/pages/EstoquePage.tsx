@@ -57,11 +57,27 @@ const EstoquePage = () => {
   }, []);
 
   const toggleProduto = (id: string, value: boolean) => {
-    setProdutos((prev) => prev.map((p) => (p.id === id ? { ...p, status_disponivel: value } : p)));
+    setProdutos((prev) => prev.map((p) => (p.id === id ? { ...p, status_disponivel: value, quantidade: value && p.quantidade === 0 ? 1 : p.quantidade } : p)));
     toast({
       title: value ? "Produto disponível" : "Produto pausado",
       description: `Alteração salva com sucesso.`,
     });
+  };
+
+  // Optimistic update da quantidade — dispara persistência em background.
+  const updateQuantidade = (id: string, delta: number) => {
+    setProdutos((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+        const novaQtd = Math.max(0, p.quantidade + delta);
+        return {
+          ...p,
+          quantidade: novaQtd,
+          status_disponivel: novaQtd > 0,
+        };
+      }),
+    );
+    // Persistência em background (ex.: supabase.from('produto').update({ quantidade }).eq('id', id))
   };
 
   const toggleAdicional = (id: string, value: boolean) => {
