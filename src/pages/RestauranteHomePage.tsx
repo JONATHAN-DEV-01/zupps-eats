@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight, User, BarChart3 } from "lucide-react";
+import { Store, Power, Clock, FileText, ImageIcon, Settings, LogOut, TrendingUp, ShoppingBag, Star, Users, ChevronRight, User, BarChart3, Package } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -143,6 +143,9 @@ const RestauranteHomePage = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/relatorios")} className="cursor-pointer gap-2">
                 <BarChart3 size={15} className="text-primary" /> Relatórios
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/estoque")} className="cursor-pointer gap-2">
+                <Package size={15} className="text-primary" /> Estoque
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer gap-2 text-destructive focus:text-destructive">

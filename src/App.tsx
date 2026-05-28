@@ -34,6 +34,7 @@ import AcompanhamentoPedidoPage from "./pages/AcompanhamentoPedidoPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import RelatoriosPage from "./pages/RelatoriosPage";
+import EstoquePage from "./pages/EstoquePage";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => (
           <Route path="/editar-produto/:id" element={<CriarProdutoPage />} />
           <Route path="/adicionais-produto/:id" element={<AdicionaisProdutoPage />} />
           <Route path="/relatorios" element={<RelatoriosPage />} />
+          <Route path="/estoque" element={<EstoquePage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
