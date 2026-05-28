@@ -183,7 +183,7 @@ const EstoquePage = () => {
                 <TableBody>
                   {produtosFiltrados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-sm text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-10 text-sm text-muted-foreground">
                         Nenhum produto encontrado.
                       </TableCell>
                     </TableRow>
@@ -195,6 +195,30 @@ const EstoquePage = () => {
                       >
                         <TableCell className="font-semibold text-foreground">{p.nome}</TableCell>
                         <TableCell className="text-sm text-foreground">{formatBRL(p.preco)}</TableCell>
+                        <TableCell>
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantidade(p.id, -1)}
+                              disabled={p.quantidade <= 0}
+                              aria-label="Diminuir quantidade"
+                              className="w-8 h-8 rounded-md border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="min-w-[2.5rem] text-center text-sm font-semibold text-foreground tabular-nums">
+                              {p.quantidade}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantidade(p.id, 1)}
+                              aria-label="Aumentar quantidade"
+                              className="w-8 h-8 rounded-md border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {p.status_disponivel ? (
                             <Badge variant="secondary" className="bg-accent/15 text-accent border-0">
