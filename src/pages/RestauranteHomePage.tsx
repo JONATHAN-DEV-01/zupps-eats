@@ -144,6 +144,9 @@ const RestauranteHomePage = () => {
               <DropdownMenuItem onClick={() => navigate("/relatorios")} className="cursor-pointer gap-2">
                 <BarChart3 size={15} className="text-primary" /> Relatórios
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/estoque")} className="cursor-pointer gap-2">
+                <Package size={15} className="text-primary" /> Estoque
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer gap-2 text-destructive focus:text-destructive">
                 <LogOut size={15} /> Sair
