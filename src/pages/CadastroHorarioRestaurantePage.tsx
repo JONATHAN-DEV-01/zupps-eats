@@ -120,7 +120,7 @@ const CadastroHorarioRestaurantePage = () => {
           description: isEditing ? "Os novos horários foram salvos com sucesso." : "Seu restaurante foi registrado com sucesso." 
         });
         sessionStorage.removeItem("restaurant_id");
-        navigate("/gerencia-restaurante");
+        navigate("/restaurante-home");
       } else {
         toast({ title: "Erro", description: data.message || data.error || "Erro ao salvar horários.", variant: "destructive" });
       }
@@ -140,7 +140,7 @@ const CadastroHorarioRestaurantePage = () => {
       panelSubtitle="Defina os dias e horários de operação do seu restaurante."
     >
       {isEditing && (
-        <button type="button" onClick={() => navigate("/gerencia-restaurante")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <button type="button" onClick={() => navigate("/restaurante-home")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft size={16} />
           Voltar para o Gerenciamento
         </button>

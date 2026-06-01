@@ -136,7 +136,7 @@ const CadastroLogoRestaurantePage = () => {
         
         toast({ title: "Sucesso!", description: isEditing ? "Dados atualizados com sucesso." : "Restaurante criado com sucesso." });
         if (isEditing) {
-          navigate("/gerencia-restaurante");
+          navigate("/restaurante-home");
         } else {
           navigate("/cadastro-horario-restaurante");
         }
@@ -175,7 +175,7 @@ const CadastroLogoRestaurantePage = () => {
       panelSubtitle="Adicione a capa e logo do seu estabelecimento para atrair mais clientes."
     >
       {isEditing && (
-        <button type="button" onClick={() => navigate("/gerencia-restaurante")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <button type="button" onClick={() => navigate("/restaurante-home")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft size={16} />
           Voltar para o Gerenciamento
         </button>

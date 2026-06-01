@@ -150,7 +150,7 @@ const CadastroDadosRestaurantePage = () => {
       panelSubtitle="Preencha os dados do seu estabelecimento para começar a vender no Zupps."
     >
       {isEditing && (
-        <button type="button" onClick={() => navigate("/gerencia-restaurante")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <button type="button" onClick={() => navigate("/restaurante-home")} className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft size={16} />
           Voltar para o Gerenciamento
         </button>

@@ -136,8 +136,8 @@ const RestauranteHomePage = () => {
             <DropdownMenuContent align="end" className="w-56 rounded-xl">
               <DropdownMenuLabel className="text-xs text-muted-foreground">Minha conta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/gerencia-restaurante")} className="cursor-pointer gap-2">
-                <Settings size={15} className="text-primary" /> Perfil
+              <DropdownMenuItem onClick={() => navigate("/cadastro-dados-restaurante")} className="cursor-pointer gap-2">
+                <Settings size={15} className="text-primary" /> Configurações
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/gerencia-cardapio")} className="cursor-pointer gap-2">
                 <FileText size={15} className="text-primary" /> Cardápio
