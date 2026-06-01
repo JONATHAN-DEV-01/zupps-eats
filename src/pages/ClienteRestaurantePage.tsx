@@ -30,8 +30,6 @@ const ClienteRestaurantePage = () => {
   const [selectedAdicionais, setSelectedAdicionais] = useState<CartAdditional[]>([]);
   const [observacao, setObservacao] = useState("");
   const [addedAnimation, setAddedAnimation] = useState<string | null>(null);
-  // Adicionais reais do produto selecionado
-  const [addedAnimation, setAddedAnimation] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
