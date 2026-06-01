@@ -44,8 +44,8 @@ const EstoquePage = () => {
   const { toast } = useToast();
   const user = getUserProfile();
 
-  // RN-02: Proteção de acesso (Administrador do Restaurante). Permite demo sem login.
-  const isAdmin = !user || user?.tipo === "restaurante" || user?.role === "admin_restaurante" || user?.perfil === "admin_restaurante";
+  // RN-02: Proteção de acesso (Administrador do Restaurante). Removido a pedido do usuário.
+  const isAdmin = true;
 
   const [produtos, setProdutos] = useState<Produto[]>(PRODUTOS_MOCK);
   const [adicionais, setAdicionais] = useState<Adicional[]>(ADICIONAIS_MOCK);
@@ -192,25 +192,7 @@ const EstoquePage = () => {
     return Object.entries(grupos);
   }, [adicionais, busca]);
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="max-w-md text-center p-8 rounded-2xl bg-card border border-border shadow-card">
-          <ShieldAlert size={40} className="mx-auto text-destructive mb-3" />
-          <h1 className="text-lg font-extrabold text-foreground mb-1">Acesso restrito</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            Apenas administradores do restaurante podem acessar o gerenciamento de estoque.
-          </p>
-          <button
-            onClick={() => navigate("/restaurante-home")}
-            className="text-sm font-semibold text-primary hover:underline"
-          >
-            Voltar para o início
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Removida a trava de acesso restrito a pedido do usuário
 
   return (
     <div className="min-h-screen bg-background">
