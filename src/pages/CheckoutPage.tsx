@@ -82,7 +82,13 @@ const CheckoutPage = () => {
   // Payment processing
   const [processing, setProcessing] = useState(false);
   const [resultado, setResultado] = useState<HistoricoTransacao | null>(null);
-  const [pixData, setPixData] = useState<{ qrCodeBase64: string, qrCodeCopiaCola: string, pedidoId: string } | null>(null);
+  const [pixData, setPixData] = useState<{ qrCodeBase64: string, qrCodeCopiaCola: string, pedidoId: string, restauranteId?: string, restauranteNome?: string, subtotal?: number, frete?: number, total?: number } | null>(() => {
+    const saved = sessionStorage.getItem("pending_pix_data");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return null; }
+    }
+    return null;
+  });
 
   // CPF Modal for PIX
   const [showCpfModal, setShowCpfModal] = useState(false);
@@ -115,16 +121,17 @@ const CheckoutPage = () => {
           if (data.status === 'approved' || data.status === 'aprovado') {
             clearInterval(interval);
             setPixData(null);
+            sessionStorage.removeItem("pending_pix_data");
             // Tracking já foi criado ao gerar o PIX — exibe tela de sucesso
             setResultado({
                id: data.id || "mock",
                numero_pedido: pixData.pedidoId,
-               restaurante_id: restaurante?.id || "",
-               restaurante_nome: restaurante?.nome_fantasia || "",
+               restaurante_id: pixData.restauranteId || restaurante?.id || "",
+               restaurante_nome: pixData.restauranteNome || restaurante?.nome_fantasia || "",
                itens: [],
-               subtotal_centavos: subtotalCentavos,
-               frete_centavos: freteCentavos,
-               total_centavos: totalCentavos,
+               subtotal_centavos: pixData.subtotal || subtotalCentavos,
+               frete_centavos: pixData.frete || freteCentavos,
+               total_centavos: pixData.total || totalCentavos,
                cartao_ultimos4: "PIX",
                cartao_bandeira: "PIX",
                status: "aprovado",
@@ -133,15 +140,16 @@ const CheckoutPage = () => {
           } else if (data.status === 'rejected' || data.status === 'recusado') {
             clearInterval(interval);
             setPixData(null);
+            sessionStorage.removeItem("pending_pix_data");
             setResultado({
                id: "mock",
                numero_pedido: pixData.pedidoId,
-               restaurante_id: restaurante?.id || "",
-               restaurante_nome: restaurante?.nome_fantasia || "",
+               restaurante_id: pixData.restauranteId || restaurante?.id || "",
+               restaurante_nome: pixData.restauranteNome || restaurante?.nome_fantasia || "",
                itens: [],
-               subtotal_centavos: subtotalCentavos,
-               frete_centavos: freteCentavos,
-               total_centavos: totalCentavos,
+               subtotal_centavos: pixData.subtotal || subtotalCentavos,
+               frete_centavos: pixData.frete || freteCentavos,
+               total_centavos: pixData.total || totalCentavos,
                cartao_ultimos4: "PIX",
                cartao_bandeira: "PIX",
                status: "recusado",
@@ -161,6 +169,18 @@ const CheckoutPage = () => {
     setCartoes(list);
     if (list.length > 0) setSelectedCardId(list[0].id);
   }, []);
+
+  // Prevent accidental reload/close during PIX
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (pixData) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [pixData]);
 
   // Guard: empty cart or no restaurant — redirect back (mas não durante PIX ou resultado)
   useEffect(() => {
@@ -379,11 +399,19 @@ const CheckoutPage = () => {
           itens: itensSnapshot,
         });
 
-        setPixData({
+        const newPixData = {
           qrCodeBase64: pixDataRes.pix_qr_code_base64,
           qrCodeCopiaCola: pixDataRes.pix_qr_code,
-          pedidoId: orderId
-        });
+          pedidoId: orderId,
+          restauranteId: restaurante?.id,
+          restauranteNome: restauranteNome,
+          subtotal: subtotalCentavos,
+          frete: freteCentavos,
+          total: totalSnapshot
+        };
+        
+        sessionStorage.setItem("pending_pix_data", JSON.stringify(newPixData));
+        setPixData(newPixData);
         await clearCart();
 
       } else {
