@@ -51,7 +51,9 @@ const ClienteRestaurantePage = () => {
 
         if (prodRes.ok) {
           const data = await prodRes.json();
-          setProdutos(data.filter((p: any) => p.disponivel !== false));
+          // RF-02 / RN-03: mantemos TODOS os produtos, incluindo esgotados.
+          // Itens indisponíveis são exibidos com overlay visual em vez de removidos.
+          setProdutos(data);
         }
 
         if (restRes.ok) {
@@ -226,70 +228,86 @@ const ClienteRestaurantePage = () => {
           {loading ? (
             <p className="text-sm text-muted-foreground py-4 w-full text-center sm:col-span-2">Carregando cardápio...</p>
           ) : filteredProdutos.length > 0 ? (
-            filteredProdutos.map((produto) => (
-              <motion.div
-                key={produto.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative flex items-start justify-between gap-4 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover cursor-pointer transition-all"
-                onClick={() => openAddModal(produto)}
-              >
-                {/* Added animation overlay */}
-                <AnimatePresence>
-                  {addedAnimation === produto.id.toString() && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 rounded-2xl bg-primary/10 flex items-center justify-center z-10"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                        <Check size={16} className="text-primary-foreground" />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="flex-1 min-w-0 flex flex-col h-full">
-                  <h3 className="text-sm font-bold text-foreground mb-1 pr-2">{produto.nome}</h3>
-                  {produto.descricao && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2">
-                      {produto.descricao}
-                    </p>
-                  )}
-                  <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
-                    {produto.em_promocao ? (
-                      <>
-                        <span className="text-xs line-through text-muted-foreground">
-                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco_original)}
-                        </span>
-                        <span className="font-extrabold text-sm text-primary">
-                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco_promocional)}
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
-                          OFERTA
-                        </span>
-                      </>
-                    ) : (
-                      <span className="font-extrabold text-sm text-primary">
-                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco)}
+            filteredProdutos.map((produto) => {
+              const esgotado = produto.disponivel === false || produto.status_disponivel === false;
+              return (
+                <motion.div
+                  key={produto.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`relative flex items-start justify-between gap-4 p-4 rounded-2xl bg-card border border-border shadow-card transition-all ${
+                    esgotado
+                      ? "opacity-60 cursor-not-allowed"
+                      : "hover:shadow-card-hover cursor-pointer hover:border-primary/20"
+                  }`}
+                  onClick={() => !esgotado && openAddModal(produto)}
+                >
+                  {/* RF-02: overlay + badge de esgotado */}
+                  {esgotado && (
+                    <div className="absolute inset-0 rounded-2xl z-10 flex items-start justify-end p-2 pointer-events-none">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold shadow-sm">
+                        Esgotado
                       </span>
+                    </div>
+                  )}
+
+                  {/* Added animation overlay */}
+                  <AnimatePresence>
+                    {addedAnimation === produto.id.toString() && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 rounded-2xl bg-primary/10 flex items-center justify-center z-20"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                          <Check size={16} className="text-primary-foreground" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex-1 min-w-0 flex flex-col h-full">
+                    <h3 className={`text-sm font-bold mb-1 pr-2 ${esgotado ? "text-muted-foreground" : "text-foreground"}`}>{produto.nome}</h3>
+                    {produto.descricao && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2">
+                        {produto.descricao}
+                      </p>
+                    )}
+                    <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
+                      {produto.em_promocao ? (
+                        <>
+                          <span className="text-xs line-through text-muted-foreground">
+                            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco_original)}
+                          </span>
+                          <span className={`font-extrabold text-sm ${esgotado ? "text-muted-foreground" : "text-primary"}`}>
+                            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco_promocional)}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
+                            OFERTA
+                          </span>
+                        </>
+                      ) : (
+                        <span className={`font-extrabold text-sm ${esgotado ? "text-muted-foreground" : "text-primary"}`}>
+                          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(produto.preco)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-20 h-20 rounded-xl bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border shadow-sm">
+                    {produto.imagem ? (
+                      <img
+                        src={resolveImageUrl(produto.imagem) ?? ''}
+                        alt={produto.nome}
+                        className={`w-full h-full object-cover ${esgotado ? "grayscale" : ""}`}
+                      />
+                    ) : (
+                      <Package size={24} className="text-muted-foreground" />
                     )}
                   </div>
-                </div>
-                <div className="w-20 h-20 rounded-xl bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border shadow-sm">
-                  {produto.imagem ? (
-                    <img
-                      src={resolveImageUrl(produto.imagem) ?? ''}
-                      alt={produto.nome}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Package size={24} className="text-muted-foreground" />
-                  )}
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })
           ) : (
             <div className="py-12 w-full text-center sm:col-span-2 border-2 border-dashed border-border rounded-3xl">
               <Package size={32} className="mx-auto text-muted-foreground mb-2 opacity-20" />

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, Search, ShieldAlert, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Package, Search, ShieldAlert, Minus, Plus, Wifi, WifiOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -50,10 +50,66 @@ const EstoquePage = () => {
   const [adicionais, setAdicionais] = useState<Adicional[]>(ADICIONAIS_MOCK);
   const [busca, setBusca] = useState("");
 
-  // Sincronização em tempo real (simulada): aqui você plugaria Supabase Realtime.
+  // RNF-01: Sincronização em tempo real via Supabase Realtime (≤3s)
+  const [realtimeOk, setRealtimeOk] = useState<boolean | null>(null);
+
   useEffect(() => {
-    // Exemplo: const channel = supabase.channel('estoque').on(...).subscribe();
-    // return () => supabase.removeChannel(channel);
+    let channel: any = null;
+    const connectRealtime = async () => {
+      try {
+        // Importação dinâmica para não quebrar se Supabase não estiver configurado
+        const { createClient } = await import("@supabase/supabase-js");
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (!supabaseUrl || !supabaseKey) return;
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        channel = supabase
+          .channel("estoque-realtime")
+          // Escuta UPDATE em produtos
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "produto" },
+            (payload: any) => {
+              const updated = payload.new;
+              setProdutos((prev) =>
+                prev.map((p) =>
+                  p.id === String(updated.id)
+                    ? { ...p, status_disponivel: updated.status_disponivel, quantidade: updated.quantidade ?? p.quantidade }
+                    : p
+                )
+              );
+            }
+          )
+          // Escuta UPDATE em item_adicional
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "item_adicional" },
+            (payload: any) => {
+              const updated = payload.new;
+              setAdicionais((prev) =>
+                prev.map((a) =>
+                  a.id === String(updated.id)
+                    ? { ...a, status_disponivel: updated.status_disponivel }
+                    : a
+                )
+              );
+            }
+          )
+          .subscribe((status: string) => {
+            setRealtimeOk(status === "SUBSCRIBED");
+          });
+      } catch {
+        // Supabase não configurado — modo offline apenas
+        setRealtimeOk(false);
+      }
+    };
+
+    connectRealtime();
+    return () => {
+      if (channel) channel.unsubscribe();
+    };
   }, []);
 
   const toggleProduto = (id: string, value: boolean) => {
@@ -135,7 +191,7 @@ const EstoquePage = () => {
           >
             <ArrowLeft size={18} className="text-foreground" />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <Package size={18} className="text-primary-foreground" />
             </div>
@@ -143,6 +199,25 @@ const EstoquePage = () => {
               <h1 className="text-base font-extrabold text-foreground leading-tight">Estoque</h1>
               <p className="text-[11px] text-muted-foreground">Disponibilidade de produtos e adicionais</p>
             </div>
+          </div>
+          {/* RNF-01: Indicador de status do Realtime */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-semibold">
+            {realtimeOk === true ? (
+              <>
+                <Wifi size={12} className="text-emerald-500" />
+                <span className="text-emerald-600 hidden sm:inline">Tempo real</span>
+              </>
+            ) : realtimeOk === false ? (
+              <>
+                <WifiOff size={12} className="text-muted-foreground" />
+                <span className="text-muted-foreground hidden sm:inline">Offline</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-muted-foreground hidden sm:inline">Conectando...</span>
+              </>
+            )}
           </div>
         </div>
       </header>

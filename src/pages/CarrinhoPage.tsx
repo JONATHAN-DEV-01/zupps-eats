@@ -2,12 +2,12 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Minus, Plus, Trash2, Store, ShoppingCart,
-  AlertTriangle, Tag, X, Loader2, CheckCircle2,
+  AlertTriangle, Tag, X, Loader2, CheckCircle2, PackageX,
 } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart, CartItem } from "@/contexts/CartContext";
-import { resolveImageUrl } from "@/lib/api";
+import { resolveImageUrl, fetchApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const formatCentavos = (centavos: number) =>
@@ -55,6 +55,38 @@ const CarrinhoPage = () => {
     if (!canCheckout) return;
     setLoadingCheckout(true);
     try {
+      // RF-04: Verifica disponibilidade de cada item antes de prosseguir
+      const checks = await Promise.allSettled(
+        itens.map(async (item) => {
+          try {
+            const res = await fetchApi(`/produtos/${item.produto_id}`);
+            if (!res.ok) return { id: item.id, nome: item.nome, disponivel: true };
+            const data = await res.json();
+            const disponivel = data.disponivel !== false && data.status_disponivel !== false;
+            return { id: item.id, nome: item.nome, disponivel };
+          } catch {
+            // Em caso de erro de rede, não bloqueamos o checkout
+            return { id: item.id, nome: item.nome, disponivel: true };
+          }
+        })
+      );
+
+      const esgotados = checks
+        .filter((r) => r.status === "fulfilled" && !(r.value as any).disponivel)
+        .map((r) => (r as PromiseFulfilledResult<any>).value);
+
+      if (esgotados.length > 0) {
+        // Remove os itens esgotados do carrinho
+        esgotados.forEach((item: any) => removeItem(item.id));
+        toast({
+          title: `${esgotados.length} item(s) esgotado(s) removido(s)`,
+          description: esgotados.map((i: any) => i.nome).join(", ") + " não está(ão) mais disponível(is).",
+          variant: "destructive",
+        });
+        setLoadingCheckout(false);
+        return; // Não prossegue para o checkout
+      }
+
       const result = await freezeCart();
       toast({ title: "Pedido confirmado!", description: "Indo para a etapa de pagamento..." });
       navigate("/checkout", { state: { token_checkout: result?.token_checkout ?? null } });
@@ -375,7 +407,7 @@ const CarrinhoPage = () => {
               {loadingCheckout ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Preparando...
+                  Verificando itens...
                 </>
               ) : congelado ? (
                 "Pedido congelado"

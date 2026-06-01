@@ -100,10 +100,12 @@ const RestauranteHomePage = () => {
   ];
 
   const quickActions = [
-    { icon: FileText, label: "Cardápio", desc: "Gerencie pratos e preços", path: "/gerencia-cardapio" },
-    { icon: Clock, label: "Horários", desc: "Funcionamento semanal", path: "/cadastro-horario-restaurante" },
-    { icon: ImageIcon, label: "Imagens", desc: "Capa e logotipo", path: "/cadastro-logo-restaurante" },
-    { icon: Settings, label: "Dados", desc: "Informações do restaurante", path: "/cadastro-dados-restaurante" },
+    { icon: FileText, label: "Cardápio", desc: "Gerencie seus pratos e preços", path: "/gerencia-cardapio", color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-950/30" },
+    { icon: Package, label: "Estoque", desc: "Disponibilidade em tempo real", path: "/estoque", color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+    { icon: Clock, label: "Horários", desc: "Configure horários de funcionamento", path: "/cadastro-horario-restaurante", color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/30" },
+    { icon: ImageIcon, label: "Imagens", desc: "Atualize capa e logo", path: "/cadastro-logo-restaurante", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/30" },
+    { icon: Settings, label: "Configurações", desc: "Dados do restaurante", path: "/cadastro-dados-restaurante", color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-800/50" },
+    { icon: BarChart3, label: "Relatórios", desc: "Métricas e faturamento", path: "/relatorios", color: "text-violet-500", bg: "bg-violet-50 dark:bg-violet-950/30" },
   ];
 
   return (
@@ -222,20 +224,20 @@ const RestauranteHomePage = () => {
         >
           <h2 className="text-sm font-bold text-foreground mb-3">Gerenciamento</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
-            {quickActions.map(({ icon: Icon, label, desc, path }) => (
+            {quickActions.map(({ icon: Icon, label, desc, path, color, bg }) => (
               <Link
                 key={label}
                 to={path}
-                className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover hover:border-primary/20 transition-all"
+                className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border shadow-card hover:shadow-card-hover hover:border-primary/20 transition-all group"
               >
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                  <Icon size={20} className="text-primary" />
+                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110`}>
+                  <Icon size={20} className={color} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-bold text-foreground block">{label}</span>
                   <span className="text-[11px] text-muted-foreground">{desc}</span>
                 </div>
-                <ChevronRight size={16} className="text-muted-foreground" />
+                <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </Link>
             ))}
           </div>
