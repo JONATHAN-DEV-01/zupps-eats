@@ -187,7 +187,7 @@ const CriarProdutoPage = () => {
 
       if (response.ok) {
         const result = await response.json();
-        const productId = id || result.id;
+        const productId = id || (result.produto && result.produto.id);
         
         // Sincronizar Adicionais
         await fetchApi(`/produtos/${productId}/adicionais`, {

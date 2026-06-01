@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getUserProfile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -21,6 +21,8 @@ const formatBRL = (v: number) =>
 const EstoquePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const user = getUserProfile();
+  const restaurantId = user?.restaurante_id || user?.id;
 
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [adicionais, setAdicionais] = useState<Adicional[]>([]);
@@ -102,8 +104,9 @@ const EstoquePage = () => {
   }, []);
 
   const loadProdutos = async () => {
+    if (!restaurantId) return;
     try {
-      const res = await fetchApi("/estoque/produtos");
+      const res = await fetchApi(`/estoque/${restaurantId}/produtos`);
       if (res.ok) setProdutos(await res.json());
     } catch (e) {
       console.error(e);
