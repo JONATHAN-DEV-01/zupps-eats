@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Package, Store, Search, X, Plus, Minus, ShoppingCart, Check, Loader2 } from "lucide-react";
-import { fetchApi, resolveImageUrl, fetchGruposAdicionais, GrupoAdicionaisServer } from "@/lib/api";
+import { fetchApi, resolveImageUrl } from "@/lib/api";
 import { useCart, CartRestaurant, CartAdditional } from "@/contexts/CartContext";
 import FloatingCartButton from "@/components/FloatingCartButton";
 import { useToast } from "@/hooks/use-toast";
@@ -31,8 +31,7 @@ const ClienteRestaurantePage = () => {
   const [observacao, setObservacao] = useState("");
   const [addedAnimation, setAddedAnimation] = useState<string | null>(null);
   // Adicionais reais do produto selecionado
-  const [gruposAdicionais, setGruposAdicionais] = useState<GrupoAdicionaisServer[]>([]);
-  const [loadingAdicionais, setLoadingAdicionais] = useState(false);
+  const [addedAnimation, setAddedAnimation] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -79,21 +78,7 @@ const ClienteRestaurantePage = () => {
     setQuantidade(1);
     setSelectedAdicionais([]);
     setObservacao("");
-    setGruposAdicionais([]);
     setModalOpen(true);
-
-    // Carrega adicionais reais do produto (exceto mock)
-    if (id !== MOCK_RESTAURANT_ID && produto.id) {
-      setLoadingAdicionais(true);
-      try {
-        const grupos = await fetchGruposAdicionais(String(produto.id));
-        setGruposAdicionais(grupos);
-      } catch {
-        // silently ignore — sem adicionais
-      } finally {
-        setLoadingAdicionais(false);
-      }
-    }
   };
 
   const toggleAdicional = (add: CartAdditional) => {
@@ -377,60 +362,50 @@ const ClienteRestaurantePage = () => {
               </div>
 
               {/* Additionals */}
-              <div className="p-5 border-b border-border">
-                <h4 className="text-sm font-bold text-foreground mb-3">Adicionais</h4>
-                {loadingAdicionais ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 size={20} className="animate-spin text-primary" />
-                  </div>
-                ) : gruposAdicionais.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Nenhum adicional disponível para este item.</p>
-                ) : (
-                  gruposAdicionais.map((grupo) => (
-                    <div key={grupo.id} className="mb-4">
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
-                        {grupo.nome}
-                        {grupo.obrigatorio && <span className="ml-1 text-destructive">*</span>}
-                      </p>
-                      <div className="space-y-2">
-                        {grupo.adicionais.filter((a) => a.disponivel).map((add) => {
-                          const cartAdd: CartAdditional = {
-                            id: String(add.id),
-                            nome: add.nome,
-                            preco_centavos: Math.round(add.preco * 100),
-                          };
-                          const selected = selectedAdicionais.find((a) => a.id === cartAdd.id);
-                          return (
-                            <button
-                              key={add.id}
-                              onClick={() => toggleAdicional(cartAdd)}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
-                                selected
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-primary/30"
+              {selectedProduct?.adicionais && selectedProduct.adicionais.length > 0 && (
+                <div className="p-5 border-b border-border">
+                  <h4 className="text-sm font-bold text-foreground mb-3">Adicionais</h4>
+                  <div className="space-y-2">
+                    {selectedProduct.adicionais.map((add: any) => {
+                      // Se tem quantidade_atual, usa ela, senão pega do status legacy (mock)
+                      const disponivel = add.quantidade_atual !== undefined ? add.quantidade_atual > 0 : add.disponivel !== false;
+                      if (!disponivel) return null; // Não exibe adicionais esgotados na compra
+                      
+                      const cartAdd: CartAdditional = {
+                        id: String(add.id),
+                        nome: add.nome,
+                        preco_centavos: Math.round(add.preco * 100),
+                      };
+                      const selected = selectedAdicionais.find((a) => a.id === cartAdd.id);
+                      return (
+                        <button
+                          key={add.id}
+                          onClick={() => toggleAdicional(cartAdd)}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/30"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                                selected ? "bg-primary border-primary" : "border-border"
                               }`}
                             >
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                                    selected ? "bg-primary border-primary" : "border-border"
-                                  }`}
-                                >
-                                  {selected && <Check size={12} className="text-primary-foreground" />}
-                                </div>
-                                <span className="text-sm font-medium text-foreground">{add.nome}</span>
-                              </div>
-                              <span className="text-xs font-semibold text-muted-foreground">
-                                + {formatCentavos(Math.round(add.preco * 100))}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                              {selected && <Check size={12} className="text-primary-foreground" />}
+                            </div>
+                            <span className="text-sm font-medium text-foreground">{add.nome}</span>
+                          </div>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            + {formatCentavos(Math.round(add.preco * 100))}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Observations */}
               <div className="p-5 border-b border-border">

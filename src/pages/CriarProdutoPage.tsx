@@ -30,6 +30,9 @@ const CriarProdutoPage = () => {
   const [selectedIngrediente, setSelectedIngrediente] = useState("");
   const [selectedQuantidade, setSelectedQuantidade] = useState("");
 
+  const [adicionaisDisponiveis, setAdicionaisDisponiveis] = useState<any[]>([]);
+  const [adicionaisSelecionados, setAdicionaisSelecionados] = useState<string[]>([]);
+
   const [formData, setFormData] = useState({
     nome: "",
     descricao: "",
@@ -51,7 +54,16 @@ const CriarProdutoPage = () => {
         console.error("Erro ao carregar ingredientes", e);
       }
     };
+    const loadAdicionais = async () => {
+      try {
+        const response = await fetchApi("/adicionais");
+        if (response.ok) setAdicionaisDisponiveis(await response.json());
+      } catch (e) {
+        console.error("Erro ao carregar adicionais", e);
+      }
+    };
     loadIngredientes();
+    loadAdicionais();
 
     if (id) {
       const loadProduct = async () => {
@@ -75,6 +87,9 @@ const CriarProdutoPage = () => {
                 ingrediente_unidade: item.ingrediente_unidade,
                 quantidade_necessaria: item.quantidade_necessaria
               })));
+            }
+            if (data.adicionais) {
+              setAdicionaisSelecionados(data.adicionais.map((a: any) => a.id));
             }
           }
         } catch {
@@ -130,6 +145,12 @@ const CriarProdutoPage = () => {
     setFichaTecnica(fichaTecnica.filter(f => f.ingrediente_id !== ingrediente_id));
   };
 
+  const toggleAdicional = (adicional_id: string) => {
+    setAdicionaisSelecionados(prev => 
+      prev.includes(adicional_id) ? prev.filter(id => id !== adicional_id) : [...prev, adicional_id]
+    );
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
@@ -165,6 +186,15 @@ const CriarProdutoPage = () => {
       const response = await fetchApi(endpoint, { method, body: data });
 
       if (response.ok) {
+        const result = await response.json();
+        const productId = id || result.id;
+        
+        // Sincronizar Adicionais
+        await fetchApi(`/produtos/${productId}/adicionais`, {
+          method: "POST",
+          body: JSON.stringify(adicionaisSelecionados),
+        });
+
         toast({ title: id ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!" });
         navigate("/gerencia-cardapio");
       } else {
@@ -359,6 +389,35 @@ const CriarProdutoPage = () => {
                         <button type="button" onClick={() => removeFichaItem(item.ingrediente_id)} className="text-destructive hover:bg-destructive/10 p-1 rounded">
                           <Trash2 size={14} />
                         </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Adicionais (Vínculo) */}
+            <div className="p-4 bg-card rounded-xl border border-border space-y-4">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-foreground">Adicionais</p>
+                <p className="text-xs text-muted-foreground">Selecione quais adicionais podem ser incluídos neste produto.</p>
+              </div>
+              {adicionaisDisponiveis.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum adicional cadastrado no restaurante.</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {adicionaisDisponiveis.map(adc => (
+                    <div 
+                      key={adc.id} 
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${adicionaisSelecionados.includes(adc.id) ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                      onClick={() => toggleAdicional(adc.id)}
+                    >
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${adicionaisSelecionados.includes(adc.id) ? 'bg-primary border-primary' : 'border-input bg-card'}`}>
+                        {adicionaisSelecionados.includes(adc.id) && <Plus size={14} className="text-primary-foreground" />}
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-sm font-bold text-foreground">{adc.nome}</span>
+                        <span className="text-xs text-muted-foreground">+ R$ {adc.preco.toFixed(2).replace('.', ',')}</span>
                       </div>
                     </div>
                   ))}

@@ -21,7 +21,6 @@ import CadastroHorarioRestaurantePage from "./pages/CadastroHorarioRestaurantePa
 import GerenciaRestaurantePage from "./pages/GerenciaRestaurantePage";
 import GerenciaCardapioPage from "./pages/GerenciaCardapioPage";
 import CriarProdutoPage from "./pages/CriarProdutoPage";
-import AdicionaisProdutoPage from "./pages/AdicionaisProdutoPage";
 import ClienteHomePage from "./pages/ClienteHomePage";
 import ClientePerfilPage from "./pages/ClientePerfilPage";
 import ClienteRestaurantePage from "./pages/ClienteRestaurantePage";
@@ -35,7 +34,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import EstoquePage from "./pages/EstoquePage";
-import IngredientesPage from "./pages/IngredientesPage";
 
 const queryClient = new QueryClient();
 
@@ -88,10 +86,8 @@ const App = () => (
           <Route path="/gerencia-cardapio" element={<GerenciaCardapioPage />} />
           <Route path="/criar-produto" element={<CriarProdutoPage />} />
           <Route path="/editar-produto/:id" element={<CriarProdutoPage />} />
-          <Route path="/adicionais-produto/:id" element={<AdicionaisProdutoPage />} />
           <Route path="/relatorios" element={<RelatoriosPage />} />
           <Route path="/estoque" element={<EstoquePage />} />
-          <Route path="/ingredientes" element={<IngredientesPage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,40 +1,19 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, Search, ShieldAlert, Minus, Plus, Wifi, WifiOff } from "lucide-react";
+import { ArrowLeft, Package, Search, Plus, Wifi, WifiOff, Edit2, Trash2, Save, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { getUserProfile } from "@/lib/api";
+import { fetchApi } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-type Produto = { id: string; nome: string; preco: number; quantidade: number; status_disponivel: boolean };
-type Adicional = { id: string; nome: string; preco: number; grupo_id: string; grupo_nome: string; status_disponivel: boolean };
-type Ingrediente = { id: string; nome: string; quantidade_atual: number; unidade_medida: string; status_disponivel: boolean };
-
-const PRODUTOS_MOCK: Produto[] = [
-  { id: "p1", nome: "Burguer Master", preco: 32.9, quantidade: 24, status_disponivel: true },
-  { id: "p2", nome: "Cheese Bacon", preco: 28.5, quantidade: 12, status_disponivel: true },
-  { id: "p3", nome: "Veggie Burger", preco: 26.0, quantidade: 0, status_disponivel: false },
-  { id: "p4", nome: "Batata Frita G", preco: 18.9, quantidade: 40, status_disponivel: true },
-  { id: "p5", nome: "Onion Rings", preco: 16.5, quantidade: 9, status_disponivel: true },
-  { id: "p6", nome: "Milk Shake Chocolate", preco: 14.9, quantidade: 0, status_disponivel: false },
-  { id: "p7", nome: "Refrigerante Lata", preco: 6.0, quantidade: 60, status_disponivel: true },
-  { id: "p8", nome: "Combo Família", preco: 89.9, quantidade: 5, status_disponivel: true },
-];
-
-const ADICIONAIS_MOCK: Adicional[] = [
-  { id: "a1", nome: "Bacon extra", preco: 4.5, grupo_id: "g1", grupo_nome: "Extras", status_disponivel: true },
-  { id: "a2", nome: "Queijo cheddar", preco: 3.5, grupo_id: "g1", grupo_nome: "Extras", status_disponivel: true },
-  { id: "a3", nome: "Cebola caramelizada", preco: 2.5, grupo_id: "g1", grupo_nome: "Extras", status_disponivel: false },
-  { id: "a4", nome: "Maionese da casa", preco: 1.5, grupo_id: "g2", grupo_nome: "Molhos", status_disponivel: true },
-  { id: "a5", nome: "Molho barbecue", preco: 1.5, grupo_id: "g2", grupo_nome: "Molhos", status_disponivel: true },
-  { id: "a6", nome: "Molho picante", preco: 1.5, grupo_id: "g2", grupo_nome: "Molhos", status_disponivel: false },
-  { id: "a7", nome: "Coca-Cola 350ml", preco: 6.0, grupo_id: "g3", grupo_nome: "Bebidas", status_disponivel: true },
-  { id: "a8", nome: "Suco natural", preco: 8.0, grupo_id: "g3", grupo_nome: "Bebidas", status_disponivel: true },
-];
+type Produto = { id: string; nome: string; preco: number; quantidade_disponivel: number; status_disponivel: boolean };
+type Adicional = { id: string; nome: string; preco: number; quantidade_atual: number; status_disponivel: boolean };
+type Ingrediente = { id: string; nome: string; quantidade_atual: number; unidade_medida: string; custo_unitario: number | null; status_disponivel: boolean };
 
 const formatBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -42,15 +21,32 @@ const formatBRL = (v: number) =>
 const EstoquePage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const user = getUserProfile();
 
-  // RN-02: Proteção de acesso (Administrador do Restaurante). Removido a pedido do usuário.
-  const isAdmin = true;
-
-  const [produtos, setProdutos] = useState<Produto[]>(PRODUTOS_MOCK);
-  const [adicionais, setAdicionais] = useState<Adicional[]>(ADICIONAIS_MOCK);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [adicionais, setAdicionais] = useState<Adicional[]>([]);
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [busca, setBusca] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // Modals state
+  const [isIngredienteModalOpen, setIsIngredienteModalOpen] = useState(false);
+  const [isAdicionalModalOpen, setIsAdicionalModalOpen] = useState(false);
+  
+  const [editingIngredienteId, setEditingIngredienteId] = useState<string | null>(null);
+  const [editingAdicionalId, setEditingAdicionalId] = useState<string | null>(null);
+
+  const [formIngrediente, setFormIngrediente] = useState({
+    nome: "",
+    quantidade_atual: "",
+    unidade_medida: "g",
+    custo_unitario: ""
+  });
+
+  const [formAdicional, setFormAdicional] = useState({
+    nome: "",
+    preco: "",
+    quantidade_atual: ""
+  });
 
   // RNF-01: Sincronização em tempo real via Supabase Realtime (≤3s)
   const [realtimeOk, setRealtimeOk] = useState<boolean | null>(null);
@@ -59,7 +55,6 @@ const EstoquePage = () => {
     let channel: any = null;
     const connectRealtime = async () => {
       try {
-        // Importação dinâmica para não quebrar se Supabase não estiver configurado
         const { createClient } = await import("@supabase/supabase-js");
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -69,130 +64,205 @@ const EstoquePage = () => {
 
         channel = supabase
           .channel("estoque-realtime")
-          // Escuta UPDATE em produtos
           .on(
             "postgres_changes",
             { event: "UPDATE", schema: "public", table: "produto" },
-            (payload: any) => {
-              const updated = payload.new;
-              setProdutos((prev) =>
-                prev.map((p) =>
-                  p.id === String(updated.id)
-                    ? { ...p, status_disponivel: updated.status_disponivel, quantidade: updated.quantidade ?? p.quantidade }
-                    : p
-                )
-              );
-            }
+            () => loadProdutos() // Reload to get computed quantidade_disponivel
           )
-          // Escuta UPDATE em item_adicional
           .on(
             "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "item_adicional" },
-            (payload: any) => {
-              const updated = payload.new;
-              setAdicionais((prev) =>
-                prev.map((a) =>
-                  a.id === String(updated.id)
-                    ? { ...a, status_disponivel: updated.status_disponivel }
-                    : a
-                )
-              );
-            }
+            { event: "*", schema: "public", table: "adicionais" },
+            () => loadAdicionais()
           )
-          // Escuta UPDATE em ingredientes
           .on(
             "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "ingredientes" },
-            (payload: any) => {
-              const updated = payload.new;
-              setIngredientes((prev) =>
-                prev.map((i) =>
-                  i.id === String(updated.id)
-                    ? { ...i, quantidade_atual: updated.quantidade_atual, status_disponivel: parseFloat(updated.quantidade_atual) > 0 }
-                    : i
-                )
-              );
-            }
+            { event: "*", schema: "public", table: "ingredientes" },
+            () => loadIngredientes()
           )
           .subscribe((status: string) => {
             setRealtimeOk(status === "SUBSCRIBED");
           });
       } catch {
-        // Supabase não configurado — modo offline apenas
         setRealtimeOk(false);
       }
     };
-    const loadData = async () => {
-      // In a real scenario, also fetch produtos and adicionais here
-      try {
-        const { fetchApi } = await import("@/lib/api");
-        const res = await fetchApi("/ingredientes");
-        if (res.ok) setIngredientes(await res.json());
-      } catch (e) {
-        console.error("Erro ao carregar ingredientes", e);
-      }
-    };
-    loadData();
 
+    const loadAll = async () => {
+      setLoading(true);
+      await Promise.all([loadProdutos(), loadAdicionais(), loadIngredientes()]);
+      setLoading(false);
+    };
+
+    loadAll();
     connectRealtime();
+    
     return () => {
       if (channel) channel.unsubscribe();
     };
   }, []);
 
-  const toggleProduto = (id: string, value: boolean) => {
-    setProdutos((prev) => prev.map((p) => (p.id === id ? { ...p, status_disponivel: value, quantidade: value && p.quantidade === 0 ? 1 : p.quantidade } : p)));
-    toast({
-      title: value ? "Produto disponível" : "Produto pausado",
-      description: `Alteração salva com sucesso.`,
-    });
+  const loadProdutos = async () => {
+    try {
+      const res = await fetchApi("/estoque/produtos");
+      if (res.ok) setProdutos(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  // Optimistic update da quantidade — dispara persistência em background.
-  const updateQuantidade = (id: string, delta: number) => {
-    setProdutos((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p;
-        const novaQtd = Math.max(0, p.quantidade + delta);
-        return {
-          ...p,
-          quantidade: novaQtd,
-          status_disponivel: novaQtd > 0,
-        };
-      }),
+  const loadAdicionais = async () => {
+    try {
+      const res = await fetchApi("/adicionais");
+      if (res.ok) setAdicionais(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadIngredientes = async () => {
+    try {
+      const res = await fetchApi("/ingredientes");
+      if (res.ok) setIngredientes(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // --- Ingredientes Logic ---
+  const handleOpenIngredienteModal = (ingrediente?: Ingrediente) => {
+    if (ingrediente) {
+      setEditingIngredienteId(ingrediente.id);
+      setFormIngrediente({
+        nome: ingrediente.nome,
+        quantidade_atual: ingrediente.quantidade_atual.toString(),
+        unidade_medida: ingrediente.unidade_medida,
+        custo_unitario: ingrediente.custo_unitario ? ingrediente.custo_unitario.toString() : ""
+      });
+    } else {
+      setEditingIngredienteId(null);
+      setFormIngrediente({ nome: "", quantidade_atual: "", unidade_medida: "g", custo_unitario: "" });
+    }
+    setIsIngredienteModalOpen(true);
+  };
+
+  const handleSaveIngrediente = async () => {
+    if (!formIngrediente.nome || !formIngrediente.unidade_medida) {
+      toast({ title: "Preencha nome e unidade", variant: "destructive" });
+      return;
+    }
+    try {
+      const payload = {
+        nome: formIngrediente.nome,
+        quantidade_atual: parseFloat(formIngrediente.quantidade_atual || "0"),
+        unidade_medida: formIngrediente.unidade_medida,
+        custo_unitario: formIngrediente.custo_unitario ? parseFloat(formIngrediente.custo_unitario) : null
+      };
+
+      const res = await fetchApi(editingIngredienteId ? `/ingredientes/${editingIngredienteId}` : "/ingredientes", {
+        method: editingIngredienteId ? "PATCH" : "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        toast({ title: "Ingrediente salvo com sucesso!" });
+        setIsIngredienteModalOpen(false);
+        loadIngredientes();
+      } else {
+        const err = await res.json();
+        toast({ title: "Erro", description: err.error || "Falha ao salvar", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro de conexão", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteIngrediente = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este ingrediente?")) return;
+    try {
+      const res = await fetchApi(`/ingredientes/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Ingrediente excluído" });
+        loadIngredientes();
+      } else {
+        toast({ title: "Erro ao excluir", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro de conexão", variant: "destructive" });
+    }
+  };
+
+  // --- Adicionais Logic ---
+  const handleOpenAdicionalModal = (adicional?: Adicional) => {
+    if (adicional) {
+      setEditingAdicionalId(adicional.id);
+      setFormAdicional({
+        nome: adicional.nome,
+        preco: adicional.preco.toString(),
+        quantidade_atual: adicional.quantidade_atual.toString()
+      });
+    } else {
+      setEditingAdicionalId(null);
+      setFormAdicional({ nome: "", preco: "", quantidade_atual: "" });
+    }
+    setIsAdicionalModalOpen(true);
+  };
+
+  const handleSaveAdicional = async () => {
+    if (!formAdicional.nome) {
+      toast({ title: "Preencha o nome", variant: "destructive" });
+      return;
+    }
+    try {
+      const payload = {
+        nome: formAdicional.nome,
+        preco: parseFloat(formAdicional.preco || "0"),
+        quantidade_atual: parseFloat(formAdicional.quantidade_atual || "0"),
+      };
+
+      const res = await fetchApi(editingAdicionalId ? `/adicionais/${editingAdicionalId}` : "/adicionais", {
+        method: editingAdicionalId ? "PATCH" : "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        toast({ title: "Adicional salvo com sucesso!" });
+        setIsAdicionalModalOpen(false);
+        loadAdicionais();
+      } else {
+        const err = await res.json();
+        toast({ title: "Erro", description: err.error || "Falha ao salvar", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro de conexão", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteAdicional = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este adicional?")) return;
+    try {
+      const res = await fetchApi(`/adicionais/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: "Adicional excluído" });
+        loadAdicionais();
+      } else {
+        toast({ title: "Erro ao excluir", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro de conexão", variant: "destructive" });
+    }
+  };
+
+  const produtosFiltrados = useMemo(() => produtos.filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase())), [produtos, busca]);
+  const ingredientesFiltrados = useMemo(() => ingredientes.filter((i) => i.nome.toLowerCase().includes(busca.toLowerCase())), [ingredientes, busca]);
+  const adicionaisFiltrados = useMemo(() => adicionais.filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase())), [adicionais, busca]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
     );
-    // Persistência em background (ex.: supabase.from('produto').update({ quantidade }).eq('id', id))
-  };
-
-  const toggleAdicional = (id: string, value: boolean) => {
-    setAdicionais((prev) => prev.map((a) => (a.id === id ? { ...a, status_disponivel: value } : a)));
-    toast({
-      title: value ? "Adicional disponível" : "Adicional pausado",
-      description: `Alteração salva com sucesso.`,
-    });
-  };
-
-  const produtosFiltrados = useMemo(
-    () => produtos.filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase())),
-    [produtos, busca],
-  );
-
-  const ingredientesFiltrados = useMemo(
-    () => ingredientes.filter((i) => i.nome.toLowerCase().includes(busca.toLowerCase())),
-    [ingredientes, busca],
-  );
-
-  const adicionaisAgrupados = useMemo(() => {
-    const filtrados = adicionais.filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase()));
-    const grupos: Record<string, { nome: string; itens: Adicional[] }> = {};
-    filtrados.forEach((a) => {
-      if (!grupos[a.grupo_id]) grupos[a.grupo_id] = { nome: a.grupo_nome, itens: [] };
-      grupos[a.grupo_id].itens.push(a);
-    });
-    return Object.entries(grupos);
-  }, [adicionais, busca]);
-
-  // Removida a trava de acesso restrito a pedido do usuário
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -212,7 +282,7 @@ const EstoquePage = () => {
             </div>
             <div>
               <h1 className="text-base font-extrabold text-foreground leading-tight">Estoque</h1>
-              <p className="text-[11px] text-muted-foreground">Disponibilidade de produtos e adicionais</p>
+              <p className="text-[11px] text-muted-foreground">Gestão de cardápio, adicionais e ingredientes</p>
             </div>
           </div>
           {/* RNF-01: Indicador de status do Realtime */}
@@ -253,12 +323,12 @@ const EstoquePage = () => {
 
         <Tabs defaultValue="produtos" className="w-full">
           <TabsList className="grid grid-cols-3 w-full max-w-md rounded-xl">
-            <TabsTrigger value="produtos" className="rounded-lg">Produtos</TabsTrigger>
+            <TabsTrigger value="produtos" className="rounded-lg">Cardápio</TabsTrigger>
             <TabsTrigger value="adicionais" className="rounded-lg">Adicionais</TabsTrigger>
             <TabsTrigger value="ingredientes" className="rounded-lg">Ingredientes</TabsTrigger>
           </TabsList>
 
-          {/* Produtos */}
+          {/* Produtos (Cardápio) */}
           <TabsContent value="produtos" className="mt-5">
             <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
               <Table>
@@ -266,64 +336,99 @@ const EstoquePage = () => {
                   <TableRow>
                     <TableHead>Produto</TableHead>
                     <TableHead className="w-[120px]">Preço</TableHead>
-                    <TableHead className="w-[170px]">Qtd. Disponível</TableHead>
-                    <TableHead className="w-[130px]">Status</TableHead>
-                    <TableHead className="w-[110px] text-right">Disponível</TableHead>
+                    <TableHead className="w-[170px] text-center">Produção Máx.</TableHead>
+                    <TableHead className="w-[130px] text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {produtosFiltrados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-10 text-sm text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center py-10 text-sm text-muted-foreground">
                         Nenhum produto encontrado.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    produtosFiltrados.map((p) => (
-                      <TableRow
-                        key={p.id}
-                        className={!p.status_disponivel ? "opacity-50 bg-muted/30" : ""}
-                      >
-                        <TableCell className="font-semibold text-foreground">{p.nome}</TableCell>
-                        <TableCell className="text-sm text-foreground">{formatBRL(p.preco)}</TableCell>
-                        <TableCell>
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => updateQuantidade(p.id, -1)}
-                              disabled={p.quantidade <= 0}
-                              aria-label="Diminuir quantidade"
-                              className="w-8 h-8 rounded-md border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <Minus size={14} />
-                            </button>
-                            <span className="min-w-[2.5rem] text-center text-sm font-semibold text-foreground tabular-nums">
-                              {p.quantidade}
+                    produtosFiltrados.map((p) => {
+                      // Status é baseado na quantidade calculada por ficha técnica no backend.
+                      // Se for 0, está esgotado.
+                      const maxQtd = p.quantidade_disponivel ?? 0;
+                      const disponivel = maxQtd > 0;
+                      return (
+                        <TableRow key={p.id} className={!disponivel ? "opacity-50 bg-muted/30" : ""}>
+                          <TableCell className="font-semibold text-foreground">{p.nome}</TableCell>
+                          <TableCell className="text-sm text-foreground">{formatBRL(p.preco)}</TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-sm font-semibold text-foreground tabular-nums bg-muted px-3 py-1 rounded-lg">
+                              {maxQtd === 999 ? "∞" : maxQtd} unid.
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantidade(p.id, 1)}
-                              aria-label="Aumentar quantidade"
-                              className="w-8 h-8 rounded-md border border-border flex items-center justify-center text-foreground hover:bg-muted transition-colors"
-                            >
-                              <Plus size={14} />
-                            </button>
-                          </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {disponivel ? (
+                              <Badge variant="secondary" className="bg-accent/15 text-accent border-0">Disponível</Badge>
+                            ) : (
+                              <Badge variant="destructive">Esgotado</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          {/* Adicionais */}
+          <TabsContent value="adicionais" className="mt-5">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => handleOpenAdicionalModal()} className="gap-2 rounded-xl">
+                <Plus size={16} /> Novo Adicional
+              </Button>
+            </div>
+            <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Adicional</TableHead>
+                    <TableHead className="w-[120px]">Preço</TableHead>
+                    <TableHead className="w-[140px]">Qtd. Estoque</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
+                    <TableHead className="w-[100px] text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adicionaisFiltrados.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-sm text-muted-foreground">
+                        Nenhum adicional encontrado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    adicionaisFiltrados.map((a) => (
+                      <TableRow key={a.id} className={a.quantidade_atual <= 0 ? "opacity-50 bg-muted/30" : ""}>
+                        <TableCell className="font-semibold text-foreground">{a.nome}</TableCell>
+                        <TableCell className="text-sm text-foreground">{formatBRL(a.preco)}</TableCell>
+                        <TableCell>
+                          <span className={`font-bold ${a.quantidade_atual <= 0 ? 'text-destructive' : 'text-foreground'}`}>
+                            {a.quantidade_atual} unid.
+                          </span>
                         </TableCell>
                         <TableCell>
-                          {p.status_disponivel ? (
-                            <Badge variant="secondary" className="bg-accent/15 text-accent border-0">
-                              Disponível
-                            </Badge>
+                          {a.quantidade_atual > 0 ? (
+                            <Badge variant="secondary" className="bg-accent/15 text-accent border-0">Disponível</Badge>
                           ) : (
                             <Badge variant="destructive">Esgotado</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Switch
-                            checked={p.status_disponivel}
-                            onCheckedChange={(v) => toggleProduto(p.id, v)}
-                          />
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenAdicionalModal(a)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAdicional(a.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -333,62 +438,13 @@ const EstoquePage = () => {
             </div>
           </TabsContent>
 
-          {/* Adicionais */}
-          <TabsContent value="adicionais" className="mt-5 space-y-5">
-            {adicionaisAgrupados.length === 0 ? (
-              <div className="rounded-2xl bg-card border border-border shadow-card py-10 text-center text-sm text-muted-foreground">
-                Nenhum adicional encontrado.
-              </div>
-            ) : (
-              adicionaisAgrupados.map(([grupoId, grupo]) => (
-                <div key={grupoId} className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
-                  <div className="px-4 py-3 border-b border-border bg-muted/30">
-                    <h3 className="text-sm font-bold text-foreground">{grupo.nome}</h3>
-                    <p className="text-[11px] text-muted-foreground">{grupo.itens.length} item(s)</p>
-                  </div>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Adicional</TableHead>
-                        <TableHead className="w-[140px]">Preço</TableHead>
-                        <TableHead className="w-[140px]">Status</TableHead>
-                        <TableHead className="w-[120px] text-right">Disponível</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {grupo.itens.map((a) => (
-                        <TableRow
-                          key={a.id}
-                          className={!a.status_disponivel ? "opacity-50 bg-muted/30" : ""}
-                        >
-                          <TableCell className="font-semibold text-foreground">{a.nome}</TableCell>
-                          <TableCell className="text-sm text-foreground">{formatBRL(a.preco)}</TableCell>
-                          <TableCell>
-                            {a.status_disponivel ? (
-                              <Badge variant="secondary" className="bg-accent/15 text-accent border-0">
-                                Disponível
-                              </Badge>
-                            ) : (
-                              <Badge variant="destructive">Esgotado</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Switch
-                              checked={a.status_disponivel}
-                              onCheckedChange={(v) => toggleAdicional(a.id, v)}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ))
-            )}
-          </TabsContent>
-
           {/* Ingredientes */}
           <TabsContent value="ingredientes" className="mt-5">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => handleOpenIngredienteModal()} className="gap-2 rounded-xl">
+                <Plus size={16} /> Novo Ingrediente
+              </Button>
+            </div>
             <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
               <Table>
                 <TableHeader>
@@ -396,7 +452,7 @@ const EstoquePage = () => {
                     <TableHead>Ingrediente (Matéria Prima)</TableHead>
                     <TableHead className="w-[200px]">Em Estoque</TableHead>
                     <TableHead className="w-[140px]">Status</TableHead>
-                    <TableHead className="w-[120px] text-right">Editar</TableHead>
+                    <TableHead className="w-[120px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -408,10 +464,7 @@ const EstoquePage = () => {
                     </TableRow>
                   ) : (
                     ingredientesFiltrados.map((i) => (
-                      <TableRow
-                        key={i.id}
-                        className={!i.status_disponivel ? "opacity-50 bg-muted/30" : ""}
-                      >
+                      <TableRow key={i.id} className={i.quantidade_atual <= 0 ? "opacity-50 bg-muted/30" : ""}>
                         <TableCell className="font-semibold text-foreground">{i.nome}</TableCell>
                         <TableCell>
                           <span className={`font-bold ${i.quantidade_atual <= 0 ? 'text-destructive' : 'text-foreground'}`}>
@@ -419,22 +472,21 @@ const EstoquePage = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          {i.status_disponivel ? (
-                            <Badge variant="secondary" className="bg-accent/15 text-accent border-0">
-                              Em Estoque
-                            </Badge>
+                          {i.quantidade_atual > 0 ? (
+                            <Badge variant="secondary" className="bg-accent/15 text-accent border-0">Em Estoque</Badge>
                           ) : (
                             <Badge variant="destructive">Esgotado</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <button
-                            type="button"
-                            onClick={() => navigate("/ingredientes")}
-                            className="text-sm font-semibold text-primary hover:underline"
-                          >
-                            Gerenciar
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenIngredienteModal(i)}>
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteIngrediente(i.id)}>
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -445,6 +497,100 @@ const EstoquePage = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Ingrediente Modal */}
+      <Dialog open={isIngredienteModalOpen} onOpenChange={setIsIngredienteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingIngredienteId ? "Editar Ingrediente" : "Novo Ingrediente"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do Ingrediente</label>
+              <Input
+                value={formIngrediente.nome}
+                onChange={(e) => setFormIngrediente({ ...formIngrediente, nome: e.target.value })}
+                placeholder="Ex: Hambúrguer 150g, Bacon..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Qtd em Estoque</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formIngrediente.quantidade_atual}
+                  onChange={(e) => setFormIngrediente({ ...formIngrediente, quantidade_atual: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Unidade</label>
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-input bg-transparent text-sm"
+                  value={formIngrediente.unidade_medida}
+                  onChange={(e) => setFormIngrediente({ ...formIngrediente, unidade_medida: e.target.value })}
+                >
+                  <option value="g">Gramas (g)</option>
+                  <option value="ml">Mililitros (ml)</option>
+                  <option value="un">Unidade (un)</option>
+                  <option value="kg">Quilogramas (kg)</option>
+                  <option value="l">Litros (l)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsIngredienteModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveIngrediente} className="gap-2"><Save size={16} /> Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Adicional Modal */}
+      <Dialog open={isAdicionalModalOpen} onOpenChange={setIsAdicionalModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingAdicionalId ? "Editar Adicional" : "Novo Adicional"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nome do Adicional</label>
+              <Input
+                value={formAdicional.nome}
+                onChange={(e) => setFormAdicional({ ...formAdicional, nome: e.target.value })}
+                placeholder="Ex: Bacon Extra"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Preço (R$)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formAdicional.preco}
+                  onChange={(e) => setFormAdicional({ ...formAdicional, preco: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Estoque (unid.)</label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={formAdicional.quantidade_atual}
+                  onChange={(e) => setFormAdicional({ ...formAdicional, quantidade_atual: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAdicionalModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveAdicional} className="gap-2"><Save size={16} /> Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
