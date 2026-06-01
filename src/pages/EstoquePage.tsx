@@ -12,6 +12,7 @@ import { getUserProfile } from "@/lib/api";
 
 type Produto = { id: string; nome: string; preco: number; quantidade: number; status_disponivel: boolean };
 type Adicional = { id: string; nome: string; preco: number; grupo_id: string; grupo_nome: string; status_disponivel: boolean };
+type Ingrediente = { id: string; nome: string; quantidade_atual: number; unidade_medida: string; status_disponivel: boolean };
 
 const PRODUTOS_MOCK: Produto[] = [
   { id: "p1", nome: "Burguer Master", preco: 32.9, quantidade: 24, status_disponivel: true },
@@ -48,6 +49,7 @@ const EstoquePage = () => {
 
   const [produtos, setProdutos] = useState<Produto[]>(PRODUTOS_MOCK);
   const [adicionais, setAdicionais] = useState<Adicional[]>(ADICIONAIS_MOCK);
+  const [ingredientes, setIngredientes] = useState<Ingrediente[]>([]);
   const [busca, setBusca] = useState("");
 
   // RNF-01: Sincronização em tempo real via Supabase Realtime (≤3s)
@@ -97,6 +99,21 @@ const EstoquePage = () => {
               );
             }
           )
+          // Escuta UPDATE em ingredientes
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "ingredientes" },
+            (payload: any) => {
+              const updated = payload.new;
+              setIngredientes((prev) =>
+                prev.map((i) =>
+                  i.id === String(updated.id)
+                    ? { ...i, quantidade_atual: updated.quantidade_atual, status_disponivel: parseFloat(updated.quantidade_atual) > 0 }
+                    : i
+                )
+              );
+            }
+          )
           .subscribe((status: string) => {
             setRealtimeOk(status === "SUBSCRIBED");
           });
@@ -105,6 +122,17 @@ const EstoquePage = () => {
         setRealtimeOk(false);
       }
     };
+    const loadData = async () => {
+      // In a real scenario, also fetch produtos and adicionais here
+      try {
+        const { fetchApi } = await import("@/lib/api");
+        const res = await fetchApi("/ingredientes");
+        if (res.ok) setIngredientes(await res.json());
+      } catch (e) {
+        console.error("Erro ao carregar ingredientes", e);
+      }
+    };
+    loadData();
 
     connectRealtime();
     return () => {
@@ -147,6 +175,11 @@ const EstoquePage = () => {
   const produtosFiltrados = useMemo(
     () => produtos.filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase())),
     [produtos, busca],
+  );
+
+  const ingredientesFiltrados = useMemo(
+    () => ingredientes.filter((i) => i.nome.toLowerCase().includes(busca.toLowerCase())),
+    [ingredientes, busca],
   );
 
   const adicionaisAgrupados = useMemo(() => {
@@ -237,9 +270,10 @@ const EstoquePage = () => {
         </motion.div>
 
         <Tabs defaultValue="produtos" className="w-full">
-          <TabsList className="grid grid-cols-2 w-full max-w-sm rounded-xl">
+          <TabsList className="grid grid-cols-3 w-full max-w-md rounded-xl">
             <TabsTrigger value="produtos" className="rounded-lg">Produtos</TabsTrigger>
             <TabsTrigger value="adicionais" className="rounded-lg">Adicionais</TabsTrigger>
+            <TabsTrigger value="ingredientes" className="rounded-lg">Ingredientes</TabsTrigger>
           </TabsList>
 
           {/* Produtos */}
@@ -369,6 +403,63 @@ const EstoquePage = () => {
                 </div>
               ))
             )}
+          </TabsContent>
+
+          {/* Ingredientes */}
+          <TabsContent value="ingredientes" className="mt-5">
+            <div className="rounded-2xl bg-card border border-border shadow-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ingrediente (Matéria Prima)</TableHead>
+                    <TableHead className="w-[200px]">Em Estoque</TableHead>
+                    <TableHead className="w-[140px]">Status</TableHead>
+                    <TableHead className="w-[120px] text-right">Editar</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ingredientesFiltrados.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
+                        Nenhum ingrediente encontrado ou cadastrado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    ingredientesFiltrados.map((i) => (
+                      <TableRow
+                        key={i.id}
+                        className={!i.status_disponivel ? "opacity-50 bg-muted/30" : ""}
+                      >
+                        <TableCell className="font-semibold text-foreground">{i.nome}</TableCell>
+                        <TableCell>
+                          <span className={`font-bold ${i.quantidade_atual <= 0 ? 'text-destructive' : 'text-foreground'}`}>
+                            {i.quantidade_atual} {i.unidade_medida}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {i.status_disponivel ? (
+                            <Badge variant="secondary" className="bg-accent/15 text-accent border-0">
+                              Em Estoque
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">Esgotado</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <button
+                            type="button"
+                            onClick={() => navigate("/ingredientes")}
+                            className="text-sm font-semibold text-primary hover:underline"
+                          >
+                            Gerenciar
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

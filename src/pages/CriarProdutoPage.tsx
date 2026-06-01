@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, ImageIcon, Plus, Loader2, Save, X } from "lucide-react";
+import { ArrowLeft, ImageIcon, Plus, Loader2, Save, X, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { API_BASE_URL, fetchApi, resolveImageUrl } from "@/lib/api";
@@ -24,6 +24,12 @@ const CriarProdutoPage = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  type FichaItem = { ingrediente_id: string; ingrediente_nome?: string; ingrediente_unidade?: string; quantidade_necessaria: number };
+  const [fichaTecnica, setFichaTecnica] = useState<FichaItem[]>([]);
+  const [ingredientesDisponiveis, setIngredientesDisponiveis] = useState<any[]>([]);
+  const [selectedIngrediente, setSelectedIngrediente] = useState("");
+  const [selectedQuantidade, setSelectedQuantidade] = useState("");
+
   const [formData, setFormData] = useState({
     nome: "",
     descricao: "",
@@ -37,6 +43,16 @@ const CriarProdutoPage = () => {
   const restaurantId = userProfile?.restaurante_id || userProfile?.id;
 
   useEffect(() => {
+    const loadIngredientes = async () => {
+      try {
+        const response = await fetchApi("/ingredientes");
+        if (response.ok) setIngredientesDisponiveis(await response.json());
+      } catch (e) {
+        console.error("Erro ao carregar ingredientes", e);
+      }
+    };
+    loadIngredientes();
+
     if (id) {
       const loadProduct = async () => {
         setFetching(true);
@@ -52,6 +68,14 @@ const CriarProdutoPage = () => {
               disponivel: data.disponivel !== false,
             });
             if (data.imagem) setImagePreview(resolveImageUrl(data.imagem));
+            if (data.ficha_tecnica) {
+              setFichaTecnica(data.ficha_tecnica.map((item: any) => ({
+                ingrediente_id: item.ingrediente_id,
+                ingrediente_nome: item.ingrediente_nome,
+                ingrediente_unidade: item.ingrediente_unidade,
+                quantidade_necessaria: item.quantidade_necessaria
+              })));
+            }
           }
         } catch {
           toast({ title: "Erro", description: "Falha ao carregar produto.", variant: "destructive" });
@@ -81,6 +105,31 @@ const CriarProdutoPage = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const addFichaItem = () => {
+    if (!selectedIngrediente || !selectedQuantidade) return;
+    const ing = ingredientesDisponiveis.find(i => i.id === selectedIngrediente);
+    if (!ing) return;
+    
+    // Check if already added
+    if (fichaTecnica.some(f => f.ingrediente_id === selectedIngrediente)) {
+      toast({ title: "Ingrediente já adicionado", variant: "destructive" });
+      return;
+    }
+
+    setFichaTecnica([...fichaTecnica, {
+      ingrediente_id: ing.id,
+      ingrediente_nome: ing.nome,
+      ingrediente_unidade: ing.unidade_medida,
+      quantidade_necessaria: parseFloat(selectedQuantidade)
+    }]);
+    setSelectedIngrediente("");
+    setSelectedQuantidade("");
+  };
+
+  const removeFichaItem = (ingrediente_id: string) => {
+    setFichaTecnica(fichaTecnica.filter(f => f.ingrediente_id !== ingrediente_id));
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.nome.trim()) newErrors.nome = "Nome é obrigatório";
@@ -106,6 +155,9 @@ const CriarProdutoPage = () => {
       const categoryName = formData.categoria_id || "Geral";
       data.append("categoria_id", categoryName);
       if (imageFile) data.append("imagem", imageFile);
+      if (fichaTecnica.length > 0) {
+        data.append("ficha_tecnica", JSON.stringify(fichaTecnica));
+      }
 
       const endpoint = id ? `/produtos/${id}` : "/produtos";
       const method = id ? "PATCH" : "POST";
@@ -263,6 +315,55 @@ const CriarProdutoPage = () => {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Ficha Técnica */}
+            <div className="p-4 bg-card rounded-xl border border-border space-y-4">
+              <div className="flex flex-col">
+                <p className="text-sm font-bold text-foreground">Ficha Técnica (Controle de Estoque)</p>
+                <p className="text-xs text-muted-foreground">Vincule os ingredientes e a quantidade gasta ao vender este produto.</p>
+              </div>
+
+              <div className="flex gap-2">
+                <select 
+                  className="flex-1 h-10 px-3 rounded-md border border-input bg-transparent text-sm"
+                  value={selectedIngrediente}
+                  onChange={(e) => setSelectedIngrediente(e.target.value)}
+                >
+                  <option value="">Selecione o ingrediente...</option>
+                  {ingredientesDisponiveis.map(ing => (
+                    <option key={ing.id} value={ing.id}>{ing.nome} (em {ing.unidade_medida})</option>
+                  ))}
+                </select>
+                <input 
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Qtd gasta"
+                  className="w-24 h-10 px-3 rounded-md border border-input bg-transparent text-sm"
+                  value={selectedQuantidade}
+                  onChange={(e) => setSelectedQuantidade(e.target.value)}
+                />
+                <button type="button" onClick={addFichaItem} className="px-3 h-10 bg-primary text-primary-foreground rounded-md text-sm font-bold">
+                  Add
+                </button>
+              </div>
+
+              {fichaTecnica.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {fichaTecnica.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md text-sm">
+                      <span>{item.ingrediente_nome}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="font-bold">{item.quantidade_necessaria} {item.ingrediente_unidade}</span>
+                        <button type="button" onClick={() => removeFichaItem(item.ingrediente_id)} className="text-destructive hover:bg-destructive/10 p-1 rounded">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Disponibilidade */}

@@ -102,6 +102,7 @@ const RestauranteHomePage = () => {
   const quickActions = [
     { icon: FileText, label: "Cardápio", desc: "Gerencie seus pratos e preços", path: "/gerencia-cardapio", color: "text-orange-500", bg: "bg-orange-50 dark:bg-orange-950/30" },
     { icon: Package, label: "Estoque", desc: "Disponibilidade em tempo real", path: "/estoque", color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+    { icon: FileText, label: "Ingredientes", desc: "Ficha técnica e insumos", path: "/ingredientes", color: "text-indigo-500", bg: "bg-indigo-50 dark:bg-indigo-950/30" },
     { icon: Clock, label: "Horários", desc: "Configure horários de funcionamento", path: "/cadastro-horario-restaurante", color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/30" },
     { icon: ImageIcon, label: "Imagens", desc: "Atualize capa e logo", path: "/cadastro-logo-restaurante", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950/30" },
     { icon: Settings, label: "Configurações", desc: "Dados do restaurante", path: "/cadastro-dados-restaurante", color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-800/50" },
@@ -148,6 +149,9 @@ const RestauranteHomePage = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/estoque")} className="cursor-pointer gap-2">
                 <Package size={15} className="text-primary" /> Estoque
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/ingredientes")} className="cursor-pointer gap-2">
+                <FileText size={15} className="text-primary" /> Ingredientes
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer gap-2 text-destructive focus:text-destructive">

@@ -35,6 +35,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import EstoquePage from "./pages/EstoquePage";
+import IngredientesPage from "./pages/IngredientesPage";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ const App = () => (
           <Route path="/adicionais-produto/:id" element={<AdicionaisProdutoPage />} />
           <Route path="/relatorios" element={<RelatoriosPage />} />
           <Route path="/estoque" element={<EstoquePage />} />
+          <Route path="/ingredientes" element={<IngredientesPage />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
